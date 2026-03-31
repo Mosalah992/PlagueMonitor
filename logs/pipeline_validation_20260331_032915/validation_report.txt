@@ -1,0 +1,91 @@
+Epidemic Lab Pipeline Validation Report
+Generated: 2026-03-31
+Artifact directory: logs/pipeline_validation_20260331_032915
+
+Scope
+- Validate the corrected control-plane to data-plane path.
+- Keep dashboard changes minimal and debugging-focused.
+- Confirm:
+  reset -> API inject -> agent receive -> infection outcome -> propagation -> event/log visibility
+
+Code changes validated
+- agents/shared/agent_base.py
+  - Metadata strings are coerced to dictionaries before validation.
+  - Topology is fixed:
+    - agent-c -> agent-b
+    - agent-b -> agent-a
+    - agent-a -> []
+  - Incoming event debug prints now show:
+    - event_type
+    - parsed metadata
+    - raw message on parse/processing failure
+  - Infection events now emit state_after.
+  - Silent CancelledError swallow removed from the main loop.
+- orchestrator/main.py
+  - Inject route now publishes event_type=infection_attempt.
+  - Control-plane metadata is emitted as a dictionary in the Redis message.
+  - Difficult injection attack strength is set high enough to validate propagation.
+- orchestrator/logger.py
+  - Metadata strings are normalized before persistence.
+  - state_after is derived from state_after/new_state/state.
+- dashboard/main.py
+  - Minimal Textual debug console retained.
+  - Visible panels are limited to:
+    - API status
+    - agent states
+    - recent events
+    - visible errors
+
+Validation steps executed
+- docker compose build orchestrator agent-a agent-b agent-c
+- docker compose up -d
+- POST /reset
+- POST /inject/agent-c with worm_level=difficult
+- Collected:
+  - docker compose ps
+  - docker compose logs --timestamps
+  - /events snapshots
+  - logs/events.jsonl tail
+
+Result
+- PASS: end-to-end pipeline is functional.
+
+Evidence
+- Control-plane injection reached the agent layer:
+  - agent-c log: Received event_type=infection_attempt src=orchestrator dst=agent-c
+- Initial infection succeeded:
+  - agent-c log: INFECTION SUCCESSFUL
+- Topology-based propagation occurred:
+  - agent-c log: Targeting neighbors: ['agent-b']
+  - agent-b log: Received event_type=infection_attempt src=agent-c dst=agent-b
+  - agent-b log: Targeting neighbors: ['agent-a']
+  - agent-a log: Received event_type=infection_attempt src=agent-b dst=agent-a
+- Persistence captured the corrected state field:
+  - /events after_id=260 includes:
+    - id 322: INFECTION_SUCCESSFUL dst=agent-c state_after=infected
+    - id 323+: propagation events for agent-b and agent-a with state_after=infected
+- Raw JSONL confirms agent event metadata is present for newer events:
+  - mutation_v, hop_count, attack_strength, original_source are present in logs/events.jsonl
+
+What is fixed
+- The original contract mismatch is fixed.
+- The event type mismatch is fixed.
+- The runtime topology is fixed.
+- API-driven injection now drives real propagation through the graph.
+- Minimal debug visibility is present without a dashboard rewrite.
+
+Residual findings
+- The event consumer replays historical Redis stream entries on orchestrator restart, which can duplicate old events in the SQLite log and make historical views noisy.
+- /events returns ascending rows, so large reads can surface older history before the most recent run unless after_id is used.
+- Autonomous propagation is aggressive once infection starts, which is useful for validation but noisy for observability.
+
+Artifacts
+- compose_build.txt
+- compose_up.txt
+- compose_ps.txt
+- status.json
+- reset_response.json
+- inject_difficult_response.json
+- events_after_inject.json
+- events_after_inject_refreshed.json
+- compose_logs.txt

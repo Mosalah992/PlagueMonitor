@@ -1,0 +1,120 @@
+﻿epidemic-agent-a  | 2026-03-31T00:59:34.023194247Z Starting agent-a (guardian) using model llama3.1:8b
+epidemic-agent-a  | 2026-03-31T01:01:01.320634946Z [agent-a] Error processing message: 1 validation error for EventPayload
+epidemic-agent-a  | 2026-03-31T01:01:01.320658047Z metadata
+epidemic-agent-a  | 2026-03-31T01:01:01.320662447Z   Input should be a valid dictionary [type=dict_type, input_value='{}', input_type=str]
+epidemic-agent-a  | 2026-03-31T01:01:01.320665847Z     For further information visit https://errors.pydantic.dev/2.12/v/dict_type
+epidemic-redis    | 2026-03-31T00:59:32.470282600Z 1:C 31 Mar 2026 00:59:32.469 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+epidemic-redis    | 2026-03-31T00:59:32.470323703Z 1:C 31 Mar 2026 00:59:32.470 * Redis version=7.4.8, bits=64, commit=00000000, modified=0, pid=1, just started
+epidemic-redis    | 2026-03-31T00:59:32.470327703Z 1:C 31 Mar 2026 00:59:32.470 * Configuration loaded
+epidemic-redis    | 2026-03-31T00:59:32.470715727Z 1:M 31 Mar 2026 00:59:32.470 * monotonic clock: POSIX clock_gettime
+epidemic-redis    | 2026-03-31T00:59:32.471923802Z 1:M 31 Mar 2026 00:59:32.471 * Running mode=standalone, port=6379.
+epidemic-redis    | 2026-03-31T00:59:32.472713752Z 1:M 31 Mar 2026 00:59:32.472 * Server initialized
+epidemic-redis    | 2026-03-31T00:59:32.479992305Z 1:M 31 Mar 2026 00:59:32.479 * Creating AOF base file appendonly.aof.1.base.rdb on server start
+epidemic-redis    | 2026-03-31T00:59:32.488678046Z 1:M 31 Mar 2026 00:59:32.488 * Creating AOF incr file appendonly.aof.1.incr.aof on server start
+epidemic-redis    | 2026-03-31T00:59:32.488705248Z 1:M 31 Mar 2026 00:59:32.488 * Ready to accept connections tcp
+epidemic-orchestrator  | 2026-03-31T00:59:34.399008961Z INFO:     Started server process [1]
+epidemic-orchestrator  | 2026-03-31T00:59:34.399070565Z INFO:     Waiting for application startup.
+epidemic-orchestrator  | 2026-03-31T00:59:34.444550298Z INFO:     Application startup complete.
+epidemic-orchestrator  | 2026-03-31T00:59:34.445647566Z INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+epidemic-orchestrator  | 2026-03-31T00:59:43.302948685Z INFO:     172.18.0.1:40250 - "GET /status HTTP/1.1" 200 OK
+epidemic-orchestrator  | 2026-03-31T01:00:45.762726815Z INFO:     172.18.0.1:47280 - "GET /events?after_id=0&limit=50 HTTP/1.1" 200 OK
+epidemic-orchestrator  | 2026-03-31T01:00:45.811795102Z INFO:     172.18.0.1:47286 - "GET /status HTTP/1.1" 200 OK
+epidemic-orchestrator  | 2026-03-31T01:01:01.354860222Z INFO:     172.18.0.1:53958 - "POST /reset HTTP/1.1" 200 OK
+epidemic-orchestrator  | 2026-03-31T01:01:04.654310874Z INFO:     172.18.0.1:53958 - "POST /inject/agent-c HTTP/1.1" 200 OK
+epidemic-orchestrator  | 2026-03-31T01:01:10.687819381Z INFO:     172.18.0.1:33808 - "GET /events?after_id=0&limit=200 HTTP/1.1" 200 OK
+epidemic-orchestrator  | 2026-03-31T01:01:10.718629201Z INFO:     172.18.0.1:33808 - "POST /inject/agent-c HTTP/1.1" 200 OK
+epidemic-orchestrator  | 2026-03-31T01:01:16.737348375Z INFO:     172.18.0.1:33818 - "GET /events?after_id=0&limit=300 HTTP/1.1" 200 OK
+epidemic-orchestrator  | 2026-03-31T01:01:16.856106115Z INFO:     172.18.0.1:33818 - "POST /inject/agent-c HTTP/1.1" 200 OK
+epidemic-orchestrator  | 2026-03-31T01:01:22.874020994Z INFO:     172.18.0.1:49726 - "GET /events?after_id=0&limit=400 HTTP/1.1" 200 OK
+epidemic-orchestrator  | 2026-03-31T01:01:22.915138494Z INFO:     172.18.0.1:49726 - "POST /quarantine/agent-b HTTP/1.1" 200 OK
+epidemic-orchestrator  | 2026-03-31T01:01:25.934731844Z INFO:     172.18.0.1:49726 - "GET /events?after_id=0&limit=500 HTTP/1.1" 200 OK
+epidemic-orchestrator  | 2026-03-31T01:01:58.787203059Z INFO:     172.18.0.1:42566 - "GET /events?after_id=0&limit=800 HTTP/1.1" 200 OK
+epidemic-agent-b       | 2026-03-31T00:59:33.989568552Z Starting agent-b (analyst) using model mistral
+epidemic-agent-b       | 2026-03-31T01:01:01.370745400Z [agent-b] Error processing message: 1 validation error for EventPayload
+epidemic-agent-b       | 2026-03-31T01:01:01.370792202Z metadata
+epidemic-agent-b       | 2026-03-31T01:01:01.370796703Z   Input should be a valid dictionary [type=dict_type, input_value='{}', input_type=str]
+epidemic-agent-b       | 2026-03-31T01:01:01.370800503Z     For further information visit https://errors.pydantic.dev/2.12/v/dict_type
+epidemic-agent-b       | 2026-03-31T01:01:22.879685902Z [agent-b] Error processing message: 1 validation error for EventPayload
+epidemic-agent-b       | 2026-03-31T01:01:22.879720298Z metadata
+epidemic-agent-b       | 2026-03-31T01:01:22.879724498Z   Input should be a valid dictionary [type=dict_type, input_value='{}', input_type=str]
+epidemic-agent-b       | 2026-03-31T01:01:22.879727698Z     For further information visit https://errors.pydantic.dev/2.12/v/dict_type
+epidemic-agent-c       | 2026-03-31T00:59:34.040868849Z Starting agent-c (courier) using model phi3
+epidemic-agent-c       | 2026-03-31T01:01:01.320417035Z [agent-c] Error processing message: 1 validation error for EventPayload
+epidemic-agent-c       | 2026-03-31T01:01:01.320465938Z metadata
+epidemic-agent-c       | 2026-03-31T01:01:01.320470438Z   Input should be a valid dictionary [type=dict_type, input_value='{}', input_type=str]
+epidemic-agent-c       | 2026-03-31T01:01:01.320473838Z     For further information visit https://errors.pydantic.dev/2.12/v/dict_type
+epidemic-agent-c       | 2026-03-31T01:01:04.604756737Z [agent-c] Error processing message: 1 validation error for EventPayload
+epidemic-agent-c       | 2026-03-31T01:01:04.604796938Z metadata
+epidemic-agent-c       | 2026-03-31T01:01:04.604801138Z   Input should be a valid dictionary [type=dict_type, input_value='{"level": "easy"}', input_type=str]
+epidemic-agent-c       | 2026-03-31T01:01:04.604804838Z     For further information visit https://errors.pydantic.dev/2.12/v/dict_type
+epidemic-agent-c       | 2026-03-31T01:01:10.698428860Z [agent-c] Error processing message: 1 validation error for EventPayload
+epidemic-agent-c       | 2026-03-31T01:01:10.698521762Z metadata
+epidemic-agent-c       | 2026-03-31T01:01:10.698528062Z   Input should be a valid dictionary [type=dict_type, input_value='{"level": "medium"}', input_type=str]
+epidemic-agent-c       | 2026-03-31T01:01:10.698531662Z     For further information visit https://errors.pydantic.dev/2.12/v/dict_type
+epidemic-agent-c       | 2026-03-31T01:01:16.750991355Z [agent-c] Error processing message: 1 validation error for EventPayload
+epidemic-agent-c       | 2026-03-31T01:01:16.751036050Z metadata
+epidemic-agent-c       | 2026-03-31T01:01:16.751040550Z   Input should be a valid dictionary [type=dict_type, input_value='{"level": "difficult"}', input_type=str]
+epidemic-agent-c       | 2026-03-31T01:01:16.751044049Z     For further information visit https://errors.pydantic.dev/2.12/v/dict_type
+epidemic-agent-c       | 2026-03-31T01:01:40.799583074Z [agent-c] ╔ Processing message from direct-test
+epidemic-agent-c       | 2026-03-31T01:01:40.799634371Z [agent-c] Processing delay: 34.4ms
+epidemic-agent-c       | 2026-03-31T01:01:40.834902832Z [agent-c] │ Attack type: DIRECT-TEST, strength: 0.99
+epidemic-agent-c       | 2026-03-31T01:01:40.834942230Z [agent-c] │ Defense: 0.15, P(infect): 69.85% → 70.93% (noisy)
+epidemic-agent-c       | 2026-03-31T01:01:40.834946530Z [agent-c] │ Roll: 66.54% → 🔴 INFECTED
+epidemic-agent-c       | 2026-03-31T01:01:40.834949630Z [agent-c] ⚠️  INFECTION SUCCESSFUL!
+epidemic-agent-c       | 2026-03-31T01:01:40.839081226Z [agent-c] 🦠 Broadcasting infection...
+epidemic-agent-c       | 2026-03-31T01:01:40.839118524Z [agent-c] No neighbors to infect (edge node)
+epidemic-agent-c       | 2026-03-31T01:01:40.839122624Z [agent-c] ╚
+epidemic-agent-c       | 2026-03-31T01:01:40.839125824Z [agent-c] ⏱️  Autonomous propagation attempt
+epidemic-agent-c       | 2026-03-31T01:01:40.839128924Z [agent-c] 🦠 Broadcasting infection...
+epidemic-agent-c       | 2026-03-31T01:01:40.839132723Z [agent-c] No neighbors to infect (edge node)
+epidemic-agent-c       | 2026-03-31T01:01:41.890654869Z [agent-c] ⏱️  Autonomous propagation attempt
+epidemic-agent-c       | 2026-03-31T01:01:41.890706867Z [agent-c] 🦠 Broadcasting infection...
+epidemic-agent-c       | 2026-03-31T01:01:41.890713367Z [agent-c] No neighbors to infect (edge node)
+epidemic-agent-c       | 2026-03-31T01:01:42.942341508Z [agent-c] ⏱️  Autonomous propagation attempt
+epidemic-agent-c       | 2026-03-31T01:01:42.942418604Z [agent-c] 🦠 Broadcasting infection...
+epidemic-agent-c       | 2026-03-31T01:01:42.942424403Z [agent-c] No neighbors to infect (edge node)
+epidemic-agent-c       | 2026-03-31T01:01:43.993810956Z [agent-c] ⏱️  Autonomous propagation attempt
+epidemic-agent-c       | 2026-03-31T01:01:43.993843155Z [agent-c] 🦠 Broadcasting infection...
+epidemic-agent-c       | 2026-03-31T01:01:43.993846355Z [agent-c] No neighbors to infect (edge node)
+epidemic-agent-c       | 2026-03-31T01:01:45.044692169Z [agent-c] ⏱️  Autonomous propagation attempt
+epidemic-agent-c       | 2026-03-31T01:01:45.044719266Z [agent-c] 🦠 Broadcasting infection...
+epidemic-agent-c       | 2026-03-31T01:01:45.044722665Z [agent-c] No neighbors to infect (edge node)
+epidemic-agent-c       | 2026-03-31T01:01:46.089763092Z [agent-c] ⏱️  Autonomous propagation attempt
+epidemic-agent-c       | 2026-03-31T01:01:46.089797588Z [agent-c] 🦠 Broadcasting infection...
+epidemic-agent-c       | 2026-03-31T01:01:46.089800688Z [agent-c] No neighbors to infect (edge node)
+epidemic-agent-c       | 2026-03-31T01:01:47.141342983Z [agent-c] ⏱️  Autonomous propagation attempt
+epidemic-agent-c       | 2026-03-31T01:01:47.141391977Z [agent-c] 🦠 Broadcasting infection...
+epidemic-agent-c       | 2026-03-31T01:01:47.141397377Z [agent-c] No neighbors to infect (edge node)
+epidemic-agent-c       | 2026-03-31T01:01:48.192917275Z [agent-c] ⏱️  Autonomous propagation attempt
+epidemic-agent-c       | 2026-03-31T01:01:48.192947772Z [agent-c] 🦠 Broadcasting infection...
+epidemic-agent-c       | 2026-03-31T01:01:48.192950871Z [agent-c] No neighbors to infect (edge node)
+epidemic-agent-c       | 2026-03-31T01:01:49.244556659Z [agent-c] ⏱️  Autonomous propagation attempt
+epidemic-agent-c       | 2026-03-31T01:01:49.244595454Z [agent-c] 🦠 Broadcasting infection...
+epidemic-agent-c       | 2026-03-31T01:01:49.244598554Z [agent-c] No neighbors to infect (edge node)
+epidemic-agent-c       | 2026-03-31T01:01:50.296263035Z [agent-c] ⏱️  Autonomous propagation attempt
+epidemic-agent-c       | 2026-03-31T01:01:50.296304730Z [agent-c] 🦠 Broadcasting infection...
+epidemic-agent-c       | 2026-03-31T01:01:50.296307629Z [agent-c] No neighbors to infect (edge node)
+epidemic-agent-c       | 2026-03-31T01:01:51.347124214Z [agent-c] ⏱️  Autonomous propagation attempt
+epidemic-agent-c       | 2026-03-31T01:01:51.347165509Z [agent-c] 🦠 Broadcasting infection...
+epidemic-agent-c       | 2026-03-31T01:01:51.347168708Z [agent-c] No neighbors to infect (edge node)
+epidemic-agent-c       | 2026-03-31T01:01:52.398778252Z [agent-c] ⏱️  Autonomous propagation attempt
+epidemic-agent-c       | 2026-03-31T01:01:52.398805650Z [agent-c] 🦠 Broadcasting infection...
+epidemic-agent-c       | 2026-03-31T01:01:52.398808850Z [agent-c] No neighbors to infect (edge node)
+epidemic-agent-c       | 2026-03-31T01:01:53.450385503Z [agent-c] ⏱️  Autonomous propagation attempt
+epidemic-agent-c       | 2026-03-31T01:01:53.450444201Z [agent-c] 🦠 Broadcasting infection...
+epidemic-agent-c       | 2026-03-31T01:01:53.450448901Z [agent-c] No neighbors to infect (edge node)
+epidemic-agent-c       | 2026-03-31T01:01:54.502025654Z [agent-c] ⏱️  Autonomous propagation attempt
+epidemic-agent-c       | 2026-03-31T01:01:54.502065952Z [agent-c] 🦠 Broadcasting infection...
+epidemic-agent-c       | 2026-03-31T01:01:54.502069052Z [agent-c] No neighbors to infect (edge node)
+epidemic-agent-c       | 2026-03-31T01:01:55.553513810Z [agent-c] ⏱️  Autonomous propagation attempt
+epidemic-agent-c       | 2026-03-31T01:01:55.553560508Z [agent-c] 🦠 Broadcasting infection...
+epidemic-agent-c       | 2026-03-31T01:01:55.553564008Z [agent-c] No neighbors to infect (edge node)
+epidemic-agent-c       | 2026-03-31T01:01:56.605068763Z [agent-c] ⏱️  Autonomous propagation attempt
+epidemic-agent-c       | 2026-03-31T01:01:56.605119961Z [agent-c] 🦠 Broadcasting infection...
+epidemic-agent-c       | 2026-03-31T01:01:56.605124461Z [agent-c] No neighbors to infect (edge node)
+epidemic-agent-c       | 2026-03-31T01:01:57.656621217Z [agent-c] ⏱️  Autonomous propagation attempt
+epidemic-agent-c       | 2026-03-31T01:01:57.656657516Z [agent-c] 🦠 Broadcasting infection...
+epidemic-agent-c       | 2026-03-31T01:01:57.656662016Z [agent-c] No neighbors to infect (edge node)
+epidemic-agent-c       | 2026-03-31T01:01:58.708320965Z [agent-c] ⏱️  Autonomous propagation attempt
+epidemic-agent-c       | 2026-03-31T01:01:58.708362564Z [agent-c] 🦠 Broadcasting infection...
+epidemic-agent-c       | 2026-03-31T01:01:58.708366864Z [agent-c] No neighbors to infect (edge node)

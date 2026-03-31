@@ -1,0 +1,87 @@
+services:
+  # Message Bus
+  redis:
+    image: redis:7-alpine
+    container_name: epidemic-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - epidemic_net
+
+  # Orchestrator API & Logging System
+  orchestrator:
+    build: 
+      context: ./orchestrator
+    container_name: epidemic-orchestrator
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./logs:/app/logs
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - OLLAMA_URL=http://host.docker.internal:11434
+    depends_on:
+      - redis
+    networks:
+      - epidemic_net
+
+  # Agent A: Guardian (High Security)
+  agent-a:
+    build:
+      context: .
+      dockerfile: agents/guardian/Dockerfile
+    container_name: epidemic-agent-a
+    environment:
+      - AGENT_ID=agent-a
+      - ROLE=guardian
+      - LLM_MODEL=${AGENT_A_MODEL:-llama3:8b-instruct}
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+    networks:
+      - epidemic_net
+
+  # Agent B: Analyst (Medium Security)
+  agent-b:
+    build:
+      context: .
+      dockerfile: agents/analyst/Dockerfile
+    container_name: epidemic-agent-b
+    environment:
+      - AGENT_ID=agent-b
+      - ROLE=analyst
+      - LLM_MODEL=${AGENT_B_MODEL:-mistral:7b-instruct}
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+    networks:
+      - epidemic_net
+
+  # Agent C: Courier (Low Security / Vulnerable)
+  agent-c:
+    build:
+      context: .
+      dockerfile: agents/courier/Dockerfile
+    container_name: epidemic-agent-c
+    environment:
+      - AGENT_ID=agent-c
+      - ROLE=courier
+      - LLM_MODEL=${AGENT_C_MODEL:-phi3:mini}
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+    networks:
+      - epidemic_net
+
+networks:
+  epidemic_net:
+    driver: bridge
+
+volumes:
+  {}

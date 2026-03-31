@@ -1,0 +1,185 @@
+Epidemic Lab Docker Build and Test Report
+Generated: 2026-03-31
+Artifact directory: logs/test_run_20260331_030034
+
+Summary
+- Docker rebuild completed successfully with fresh pulls and no cache.
+- All five containers started and remained up during the test run.
+- Basic web endpoints were reachable.
+- The documented orchestrator workflow is not functionally working end to end.
+- A direct Redis message using the agent contract did trigger infection handling, which isolates part of the breakage to the orchestration path.
+- The stack was shut down after artifact collection.
+
+Environment
+- Docker Server: 29.3.1
+- Docker Compose: v5.1.1
+- Rebuild command: docker compose build --pull --no-cache
+- Start command: docker compose up -d
+- Base/runtime images observed:
+- python:3.12-slim
+- redis:7-alpine
+
+Dependency upgrades observed during rebuild
+- Orchestrator image installed:
+- fastapi 0.135.2
+- uvicorn 0.42.0
+- redis 7.4.0
+- httpx 0.28.1
+- pydantic 2.12.5
+- Agent images installed:
+- redis 7.4.0
+- httpx 0.28.1
+- pydantic 2.12.5
+
+Test sequence executed
+- Archived previous logs to logs/archive_20260331_025853
+- Brought down previous stack with docker compose down --remove-orphans
+- Rebuilt images with docker compose build --pull --no-cache
+- Started stack with docker compose up -d
+- Verified:
+- docker compose ps
+- GET /status
+- GET /
+- GET /events
+- GET /logs/dump
+- Exercised orchestrator workflow:
+- POST /reset
+- POST /inject/agent-c with easy
+- POST /inject/agent-c with medium
+- POST /inject/agent-c with difficult
+- POST /quarantine/agent-b
+- Exercised agent contract directly:
+- Published one infection_attempt message to Redis channel agent_agent-c with metadata as a dictionary
+
+What passed
+- Image build completed successfully for:
+- epidemic_lab-orchestrator
+- epidemic_lab-agent-a
+- epidemic_lab-agent-b
+- epidemic_lab-agent-c
+- Container startup passed:
+- epidemic-redis
+- epidemic-orchestrator
+- epidemic-agent-a
+- epidemic-agent-b
+- epidemic-agent-c
+- HTTP reachability passed:
+- GET /status returned 200 with {"status":"running"}
+- GET / returned 200
+- GET /logs/dump returned a JSONL log file
+- Event persistence passed:
+- Orchestrator-issued events were written to logs/events.jsonl and epidemic.db
+- Direct Redis infection test passed at the agent layer:
+- agent-c processed the message
+- infection probability was computed
+- infection roll succeeded
+- INFECTION_SUCCESSFUL was logged
+
+What failed
+- The documented reset, inject, and quarantine workflow did not execute successfully inside the agents.
+- No API-driven infection or quarantine produced downstream agent state transitions.
+- Only six events were recorded total:
+- RESET_ISSUED x1
+- WRM-INJECT x3
+- QUARANTINE_ISSUED x1
+- INFECTION_SUCCESSFUL x1
+- There were seven agent-side processing errors in compose logs:
+- epidemic-agent-c x4
+- epidemic-agent-b x2
+- epidemic-agent-a x1
+
+Findings
+
+1. Critical: orchestrator metadata format does not match the agent contract
+- Evidence from logs:
+- agent-c error on reset: Input should be a valid dictionary, input_value='{}'
+- agent-c error on easy inject: Input should be a valid dictionary, input_value='{"level": "easy"}'
+- agent-b and agent-a also error on reset/quarantine for the same reason
+- Impact:
+- The documented UI/API control flow is broken.
+- Reset, quarantine, and injection requests are accepted by the orchestrator but fail before the agents can handle them.
+- Root cause:
+- Orchestrator publishes metadata as JSON strings for reset, quarantine, and inject.
+- Agent EventPayload expects metadata as a dictionary.
+
+2. High: the network topology graph is malformed, so agent-c has no neighbor mapping at runtime
+- Evidence from logs:
+- After direct infection, agent-c repeatedly logged: No neighbors to infect (edge node)
+- Evidence from runtime inspection:
+- NETWORK_GRAPH imported from agents/shared/agent_base.py resolved to a first key ending with "agent-c" prefixed by the docstring text, not a plain "agent-c" key
+- Impact:
+- Even when infection handling works, propagation from agent-c to agent-b is blocked.
+- The core simulation topology does not match the intended courier -> analyst -> guardian path.
+- Root cause:
+- A string literal was placed inside the dictionary literal and concatenated into the first key.
+
+3. High: the documented inject endpoint uses an event type that agents do not handle
+- Evidence from code path exercised:
+- Orchestrator sends event_type="injection"
+- Agent loop handles only quarantine, reset, infection_attempt, and message
+- Impact:
+- Even after fixing metadata shape, the orchestrator injection route still will not drive infection handling unless event_type is aligned.
+- Note:
+- The metadata validation error currently fires first, so this defect is masked in the HTTP path.
+
+4. Medium: logged infection state is not landing in the events table field used by the dashboard query
+- Evidence:
+- Direct infection created INFECTION_SUCCESSFUL, but the row exposed through /events had empty state_after
+- Logger writes event_data.get("state_after", "")
+- Infection success logging uses old_state and new_state fields instead
+- Impact:
+- Persisted event rows omit the resulting state for infection events, reducing dashboard/reporting accuracy.
+
+5. Low: build/runtime platform itself is stable
+- Evidence:
+- Build completed without Docker errors.
+- All containers stayed up during testing.
+- The web server served status, dashboard HTML, event polling, and log dump requests.
+
+Representative log evidence
+- 2026-03-31T01:01:04Z agent-c:
+- Error processing message: metadata Input should be a valid dictionary, input_value='{"level": "easy"}'
+- 2026-03-31T01:01:22Z agent-b:
+- Error processing message: metadata Input should be a valid dictionary, input_value='{}'
+- 2026-03-31T01:01:40Z agent-c:
+- Attack type: DIRECT-TEST, strength: 0.99
+- P(infect): 69.85% -> 70.93%
+- Roll: 66.54% -> INFECTED
+- Broadcasting infection...
+- No neighbors to infect (edge node)
+
+Conclusion
+- The rebuild itself is clean.
+- The stack boots and the orchestrator is reachable.
+- The end-to-end simulation path exposed by the HTTP API is currently broken by message contract mismatches.
+- The lower-level infection engine can run when given a correctly shaped message, but propagation is then blocked by the malformed topology graph.
+
+Recommended next fixes before the next test cycle
+- Make orchestrator publish metadata as dictionaries, not JSON strings.
+- Align orchestrator inject event_type with the agent handler, most likely infection_attempt.
+- Fix NETWORK_GRAPH so "agent-c" is a real key.
+- Align logged state fields so infection events persist the resulting state.
+
+Artifacts saved
+- compose_ps_initial.txt
+- compose_ps_final.txt
+- compose_logs_initial.txt
+- compose_logs_after_tests.txt
+- status_initial.json
+- dashboard_status_code.txt
+- events_initial.json
+- events_after_easy.json
+- events_after_medium.json
+- events_after_difficult.json
+- events_after_quarantine.json
+- events_after_direct_redis.json
+- events_final.json
+- reset_response.json
+- inject_easy_response.json
+- inject_medium_response.json
+- inject_difficult_response.json
+- quarantine_agent_b_response.json
+- logs_dump_from_api.jsonl
+- events_runtime_snapshot.jsonl
+- epidemic_runtime_snapshot.db
+- direct_redis_publish_result.txt
