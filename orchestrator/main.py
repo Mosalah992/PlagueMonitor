@@ -3,6 +3,7 @@ import json
 import os
 import sqlite3
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
@@ -24,6 +25,24 @@ DB_PATH = "/app/logs/epidemic.db"
 
 class InjectPayload(BaseModel):
     worm_level: str = "easy"
+
+
+def _parse_json_field(value: Any) -> Any:
+    if not isinstance(value, str):
+        return value
+    stripped = value.strip()
+    if not stripped:
+        return value
+    try:
+        parsed = json.loads(stripped)
+    except json.JSONDecodeError:
+        return value
+    if isinstance(parsed, str):
+        try:
+            return json.loads(parsed)
+        except json.JSONDecodeError:
+            return parsed
+    return parsed
 
 
 @app.on_event("startup")
@@ -84,19 +103,30 @@ async def dashboard():
 
 # ── Events polling endpoint (used by web dashboard) ─────
 @app.get("/events")
-async def get_events(after_id: int = 0, limit: int = 100):
+async def get_events(after_id: int = 0, limit: int = 100, order: str = "desc"):
     try:
+        normalized_limit = max(1, min(limit, 500))
+        normalized_order = "ASC" if order.lower() == "asc" else "DESC"
+        if after_id > 0:
+            normalized_order = "ASC"
         with sqlite3.connect(DB_PATH) as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
-                """SELECT id, timestamp as ts, src_agent as src, dst_agent as dst,
+                f"""SELECT id, timestamp as ts, src_agent as src, dst_agent as dst,
                           event_type as event, attack_type, payload, mutation_v,
                           agent_state as state_after, metadata
-                   FROM events WHERE id > ? ORDER BY id ASC LIMIT ?""",
-                (after_id, limit),
+                   FROM events WHERE id > ? ORDER BY id {normalized_order} LIMIT ?""",
+                (after_id, normalized_limit),
             ).fetchall()
-            events = [dict(r) for r in rows]
-        return {"events": events}
+            latest_id = conn.execute(
+                "SELECT COALESCE(MAX(id), 0) AS latest_id FROM events"
+            ).fetchone()["latest_id"]
+            events = []
+            for row in rows:
+                event = dict(row)
+                event["metadata"] = _parse_json_field(event.get("metadata"))
+                events.append(event)
+        return {"events": events, "latest_id": latest_id}
     except Exception as e:
         return {"events": [], "error": str(e)}
 

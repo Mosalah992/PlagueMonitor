@@ -40,6 +40,7 @@ services:
       - LLM_MODEL=${AGENT_A_MODEL:-llama3:8b-instruct}
       - OLLAMA_URL=http://host.docker.internal:11434
       - REDIS_URL=redis://redis:6379/0
+      - HEARTBEAT_INTERVAL_S=${HEARTBEAT_INTERVAL_S:-1800}
     depends_on:
       - redis
     networks:
@@ -57,6 +58,7 @@ services:
       - LLM_MODEL=${AGENT_B_MODEL:-mistral:7b-instruct}
       - OLLAMA_URL=http://host.docker.internal:11434
       - REDIS_URL=redis://redis:6379/0
+      - HEARTBEAT_INTERVAL_S=${HEARTBEAT_INTERVAL_S:-1800}
     depends_on:
       - redis
     networks:
@@ -74,6 +76,7 @@ services:
       - LLM_MODEL=${AGENT_C_MODEL:-phi3:mini}
       - OLLAMA_URL=http://host.docker.internal:11434
       - REDIS_URL=redis://redis:6379/0
+      - HEARTBEAT_INTERVAL_S=${HEARTBEAT_INTERVAL_S:-1800}
     depends_on:
       - redis
     networks:

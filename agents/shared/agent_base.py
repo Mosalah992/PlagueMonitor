@@ -140,7 +140,9 @@ class AgentBase:
         # ─────────────────────────────────────────────────────────
         self.propagation_interval_ms: float = 500  # How often infected agent attempts spread
         self.last_propagation: float = 0
-        self.heartbeat_interval_s: float = 5.0
+        self.heartbeat_interval_s: float = float(
+            os.environ.get("HEARTBEAT_INTERVAL_S", "1800")
+        )
         self.last_heartbeat_at: float = 0.0
         
         # Redis and HTTP clients
@@ -695,6 +697,14 @@ class AgentBase:
         for target in neighbors:
             # Slight attack strength reduction as payload propagates (realistic decay)
             attack_strength = self.current_attack_strength * random.uniform(0.8, 1.0)
+            event_metadata = {
+                "attack_type": "PI-DIRECT",
+                "attack_strength": attack_strength,
+                "source_infection": True,
+                "mutation_v": self.mutation_version,
+                "original_source": "orchestrator",
+                "hop_count": previous_hop_count + 1,
+            }
             
             msg = {
                 "id": os.urandom(8).hex(),
@@ -702,15 +712,19 @@ class AgentBase:
                 "dst": target,
                 "event_type": "infection_attempt",  # HIGH priority event type
                 "payload": mutated_payload,
-                "metadata": {
-                    "attack_type": "PI-DIRECT",
-                    "attack_strength": attack_strength,
-                    "source_infection": True,
-                    "mutation_v": self.mutation_version,
-                    "original_source": "orchestrator",
-                    "hop_count": previous_hop_count + 1,
-                }
+                "metadata": event_metadata,
             }
+
+            await self.redis.xadd("events_stream", {
+                "ts": str(time.time()),
+                "event": "INFECTION_ATTEMPT",
+                "src": self.agent_id,
+                "dst": target,
+                "payload": mutated_payload,
+                "attack_type": "PI-DIRECT",
+                "mutation_v": str(self.mutation_version),
+                "metadata": json.dumps(event_metadata),
+            })
             
             print(f"[{self.agent_id}] → {target} (strength: {attack_strength:.2f}, mutation v{self.mutation_version})")
             
@@ -861,6 +875,10 @@ class AgentBase:
                     
                     print(f"[{self.agent_id}] ⏱️  Autonomous propagation attempt")
                     await self._broadcast_infection()
+
+                if now - self.last_heartbeat_at >= self.heartbeat_interval_s:
+                    await self._emit_heartbeat()
+                    self.last_heartbeat_at = now
                 
                 # ─────────────────────────────────────────────────────────
                 # PHASE 3: STATE MONITORING (Optional diagnostics)
