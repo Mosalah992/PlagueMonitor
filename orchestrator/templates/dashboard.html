@@ -3,749 +3,1808 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Epidemic Lab Console</title>
+    <title>Epidemic Lab Search & Investigation</title>
     <style>
         :root {
-            --bg: #0f172a;
-            --panel: #111827;
-            --panel-2: #1f2937;
-            --border: #334155;
-            --text: #e5e7eb;
-            --muted: #94a3b8;
-            --good: #22c55e;
-            --warn: #f59e0b;
-            --bad: #ef4444;
-            --info: #38bdf8;
-            --mono: "Consolas", "SFMono-Regular", "Liberation Mono", monospace;
-            --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            --bg: #06090d;
+            --panel: #0c1218;
+            --panel-2: #101922;
+            --panel-3: #15222e;
+            --panel-4: #1a2731;
+            --line: #203646;
+            --line-soft: rgba(69, 111, 140, 0.45);
+            --text: #d8e7f2;
+            --muted: #87a1b6;
+            --muted-2: #6f8799;
+            --green: #49ff95;
+            --cyan: #5cc8ff;
+            --amber: #ffc857;
+            --red: #ff6177;
+            --shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+            --sans: "Segoe UI", "IBM Plex Sans", "Arial", sans-serif;
+            --mono: "Cascadia Mono", "JetBrains Mono", "Consolas", monospace;
         }
 
-        * {
-            box-sizing: border-box;
-        }
-
+        * { box-sizing: border-box; }
         body {
             margin: 0;
-            background: linear-gradient(180deg, #020617 0%, var(--bg) 100%);
+            background: radial-gradient(circle at top, #0f1722 0%, var(--bg) 55%);
             color: var(--text);
             font-family: var(--sans);
+            line-height: 1.45;
         }
-
-        .shell {
-            min-height: 100svh;
-            display: flex;
-            flex-direction: column;
+        button, input, select {
+            font: inherit;
+            color: var(--text);
+            background: var(--panel-2);
+            border: 1px solid var(--line-soft);
+            border-radius: 12px;
+            padding: 10px 14px;
+            transition: border-color 120ms ease, background 120ms ease, transform 120ms ease, box-shadow 120ms ease;
         }
-
+        button { cursor: pointer; }
+        button:hover, input:hover, select:hover, .row:hover {
+            border-color: rgba(92, 200, 255, 0.72);
+            box-shadow: 0 0 0 3px rgba(92, 200, 255, 0.08);
+        }
+        button:focus-visible, input:focus-visible, select:focus-visible {
+            outline: none;
+            border-color: rgba(73, 255, 149, 0.8);
+            box-shadow: 0 0 0 3px rgba(73, 255, 149, 0.12);
+        }
+        .page { min-height: 100svh; display: flex; flex-direction: column; }
         .topbar {
             position: sticky;
             top: 0;
-            z-index: 10;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            justify-content: space-between;
-            align-items: center;
+            z-index: 20;
+            background: rgba(6, 9, 13, 0.96);
+            border-bottom: 1px solid var(--line);
             padding: 16px 20px;
-            background: rgba(2, 6, 23, 0.92);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+            box-shadow: inset 0 2px 0 rgba(73, 255, 149, 0.45);
         }
-
-        .title-wrap {
+        .topline, .toolbar, .subtabs, .statusbar {
             display: flex;
-            flex-direction: column;
-            gap: 4px;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
         }
-
+        .topline { justify-content: space-between; }
         .title {
             margin: 0;
-            font-size: clamp(1.2rem, 2vw, 1.8rem);
-            font-weight: 700;
+            color: var(--green);
+            font-family: var(--mono);
+            font-size: clamp(1.3rem, 2vw, 2rem);
+            letter-spacing: -0.02em;
         }
-
         .subtitle {
+            margin-top: 8px;
             color: var(--muted);
-            font-size: 0.92rem;
-        }
-
-        .status-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .pill {
-            padding: 8px 12px;
-            border: 1px solid var(--border);
-            border-radius: 999px;
-            background: rgba(15, 23, 42, 0.9);
+            font-family: var(--mono);
             font-size: 0.9rem;
         }
-
-        .pill.good {
-            border-color: rgba(34, 197, 94, 0.45);
-            color: var(--good);
-        }
-
-        .layout {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 16px;
-            padding: 16px;
-        }
-
-        .panel {
-            background: rgba(17, 24, 39, 0.95);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            overflow: hidden;
-            min-width: 0;
-        }
-
-        .panel h2 {
-            margin: 0;
-            padding: 14px 16px;
-            border-bottom: 1px solid var(--border);
-            font-size: 0.95rem;
-            letter-spacing: 0.02em;
-        }
-
-        .panel-body {
-            padding: 16px;
-        }
-
-        .controls-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 10px;
-        }
-
-        .controls-grid select,
-        .controls-grid button {
-            width: 100%;
-            min-height: 42px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            background: var(--panel-2);
-            color: var(--text);
-            font: inherit;
-            padding: 10px 12px;
-        }
-
-        .controls-grid button {
-            cursor: pointer;
-        }
-
-        .controls-grid button:hover {
-            border-color: var(--info);
-        }
-
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 10px;
-        }
-
-        .summary-card {
-            background: rgba(15, 23, 42, 0.85);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 12px;
-        }
-
-        .summary-label {
-            color: var(--muted);
-            font-size: 0.8rem;
-            margin-bottom: 6px;
-        }
-
-        .summary-value {
-            font-size: 1.2rem;
-            font-weight: 700;
-        }
-
-        .agents {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 12px;
-        }
-
-        .agent-card {
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 14px;
-            background: rgba(15, 23, 42, 0.85);
-        }
-
-        .agent-head {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
-        .agent-role {
-            color: var(--muted);
-            font-size: 0.85rem;
-            margin-top: 2px;
-        }
-
-        .badge {
-            padding: 6px 10px;
+        .chip {
+            border: 1px solid var(--line-soft);
+            background: var(--panel);
             border-radius: 999px;
-            font-size: 0.78rem;
-            font-weight: 700;
-            border: 1px solid var(--border);
+            padding: 8px 13px;
+            font-size: 0.82rem;
+            font-family: var(--mono);
             white-space: nowrap;
         }
-
-        .state-healthy { color: var(--good); border-color: rgba(34, 197, 94, 0.35); }
-        .state-infected { color: var(--bad); border-color: rgba(239, 68, 68, 0.45); }
-        .state-quarantined { color: var(--info); border-color: rgba(56, 189, 248, 0.4); }
-        .state-resistant { color: var(--warn); border-color: rgba(245, 158, 11, 0.4); }
-        .state-exposed { color: #f97316; border-color: rgba(249, 115, 22, 0.4); }
-        .state-unknown { color: var(--muted); }
-
-        .kv {
-            display: grid;
-            grid-template-columns: 92px 1fr;
-            gap: 6px 10px;
-            font-size: 0.9rem;
-            margin-bottom: 12px;
-        }
-
-        .kv .key {
-            color: var(--muted);
-        }
-
-        .code-block {
-            margin: 0;
-            white-space: pre-wrap;
-            word-break: break-word;
-            overflow-wrap: anywhere;
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            background: rgba(2, 6, 23, 0.85);
-            padding: 12px;
+        .chip.good { color: var(--green); }
+        .chip.warn { color: var(--amber); }
+        .chip.bad { color: var(--red); }
+        .nav button, .subtabs button {
+            background: var(--panel);
             font-family: var(--mono);
-            font-size: 0.82rem;
-            line-height: 1.45;
-            max-height: 220px;
-            overflow: auto;
         }
-
-        .topology {
-            font-family: var(--mono);
-            white-space: pre-wrap;
-            line-height: 1.6;
+        .nav button.active, .subtabs button.active {
+            border-color: var(--green);
+            color: var(--green);
+            background: var(--panel-3);
         }
-
-        .events-panel {
-            grid-column: 1 / -1;
-        }
-
-        .events-header {
+        .main {
+            width: min(1880px, calc(100vw - 24px));
+            margin: 0 auto;
+            padding: 16px 12px 20px;
             display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .view { display: none; }
+        .view.active { display: block; }
+        .panel {
+            border: 1px solid var(--line-soft);
+            border-radius: 16px;
+            background: linear-gradient(180deg, rgba(16, 25, 34, 0.96) 0%, rgba(12, 18, 24, 0.98) 100%);
+            overflow: hidden;
+            min-width: 0;
+            box-shadow: var(--shadow);
+        }
+        .search-shell {
+            border-radius: 14px;
+            border: 1px solid rgba(73, 255, 149, 0.22);
+            box-shadow: inset 0 1px 0 rgba(73, 255, 149, 0.15);
+        }
+        .panel-head {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--line-soft);
+            color: var(--cyan);
+            display: flex;
             justify-content: space-between;
+            gap: 10px;
             align-items: center;
+            font-family: var(--mono);
+            font-size: 0.95rem;
         }
-
-        .events-meta {
-            color: var(--muted);
-            font-size: 0.9rem;
-        }
-
-        .event-list {
+        .panel-body { padding: 16px; }
+        .panel-body.tight { padding: 10px 12px; }
+        .controls-grid, .control-health, .live-metrics, .cards {
             display: grid;
             gap: 12px;
-            max-height: 65svh;
-            overflow: auto;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         }
-
-        .event-card {
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            background: rgba(15, 23, 42, 0.82);
-            padding: 14px;
-        }
-
-        .event-top {
+        .control-layout {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, auto));
-            gap: 8px 14px;
-            margin-bottom: 10px;
+            gap: 14px;
+            grid-template-columns: minmax(320px, 420px) 1fr;
+        }
+        .search-layout {
+            display: grid;
+            gap: 14px;
+            grid-template-columns: 300px minmax(0, 1fr) 400px;
+            align-items: start;
+        }
+        .search-center { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+        .search-header {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .query-shell {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 12px 14px;
+            border: 1px solid rgba(73, 255, 149, 0.22);
+            border-radius: 14px;
+            background: #0a1216;
+        }
+        .query-shell .prompt {
+            color: var(--green);
+            font-size: 0.84rem;
+            white-space: nowrap;
+            font-family: var(--mono);
+        }
+        .query-shell input {
+            flex: 1 1 auto;
+            padding: 0;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            outline: none;
+            font-family: var(--mono);
+            font-size: 1rem;
+        }
+        .query-tools {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
             align-items: center;
         }
-
-        .event-name {
-            font-weight: 700;
-            color: var(--info);
-        }
-
-        .event-route,
-        .event-time,
-        .event-extra {
+        .search-meta {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
             color: var(--muted);
-            font-size: 0.9rem;
+            font-size: 0.8rem;
+            font-family: var(--mono);
         }
-
-        .event-section {
-            margin-top: 10px;
+        .search-meta .meta-item {
+            padding: 7px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--line-soft);
+            background: rgba(12, 18, 24, 0.75);
         }
-
-        .event-section h3 {
-            margin: 0 0 6px 0;
-            font-size: 0.82rem;
+        .metric {
+            border: 1px solid var(--line-soft);
+            border-radius: 12px;
+            background: var(--panel-2);
+            padding: 12px;
+        }
+        .metric .label {
             color: var(--muted);
-            letter-spacing: 0.03em;
+            font-size: 0.78rem;
+            font-family: var(--mono);
             text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
-
+        .metric .value {
+            font-size: 1.3rem;
+            margin-top: 8px;
+            font-family: var(--mono);
+        }
+        .small {
+            color: var(--muted);
+            font-size: 0.8rem;
+            font-family: var(--mono);
+        }
+        .agent-card {
+            border: 1px solid var(--line-soft);
+            border-radius: 14px;
+            padding: 14px;
+            background: var(--panel-2);
+        }
+        .kv {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            gap: 8px 12px;
+            font-size: 0.88rem;
+            font-family: var(--mono);
+        }
+        .kv .key { color: var(--muted); }
+        .fields-list, .list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 70svh;
+            overflow: auto;
+            padding-right: 4px;
+        }
+        .sidebar-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .sidebar-section {
+            border: 1px solid var(--line-soft);
+            border-radius: 14px;
+            background: var(--panel-2);
+            overflow: hidden;
+        }
+        .sidebar-head {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--line-soft);
+            background: rgba(21, 34, 46, 0.72);
+            color: var(--text);
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-family: var(--mono);
+        }
+        .sidebar-body {
+            padding: 10px;
+        }
+        .field-group, .error-box, .detail-block, .table-wrap, .live-stream {
+            border: 1px solid var(--line-soft);
+            border-radius: 12px;
+        }
+        .field-group, .detail-block, .live-stream, .table-wrap {
+            background: var(--panel-2);
+        }
         .error-box {
-            border: 1px solid rgba(239, 68, 68, 0.45);
-            background: rgba(127, 29, 29, 0.24);
-            border-radius: 10px;
+            background: rgba(66, 16, 28, 0.6);
+            color: #ffd4db;
             padding: 12px;
             white-space: pre-wrap;
+            font-family: var(--mono);
+        }
+        .field-group { padding: 10px 10px 12px; }
+        .field-title {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            align-items: center;
+            color: var(--text);
+            font-size: 0.84rem;
+            margin-bottom: 4px;
+            font-family: var(--mono);
+        }
+        .field-title span:last-child {
+            color: var(--muted);
+            font-size: 0.74rem;
+        }
+        .field-pill {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            width: 100%;
+            background: transparent;
+            border: 1px solid var(--line-soft);
+            margin-top: 8px;
+            border-radius: 8px;
+            padding: 8px 10px;
+            text-align: left;
+            font-family: var(--mono);
+            align-items: center;
+        }
+        .field-pill:hover {
+            background: rgba(92, 200, 255, 0.06);
+        }
+        .field-pill span:first-child {
+            flex: 1 1 auto;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .field-pill span:last-child {
+            color: var(--cyan);
+            flex: 0 0 auto;
+            font-size: 0.8rem;
+        }
+        .selected-field {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 8px 10px;
+            border: 1px solid rgba(73, 255, 149, 0.25);
+            border-radius: 8px;
+            background: rgba(73, 255, 149, 0.05);
+            color: var(--green);
+            font-family: var(--mono);
+        }
+        .selected-field button {
+            padding: 4px 8px;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--muted);
+            flex: 0 0 auto;
+            white-space: nowrap;
+            margin-left: auto;
+        }
+        .selected-field > div {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+        .selected-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 8px;
+        }
+        .selected-actions button {
+            font-family: var(--mono);
+            font-size: 0.78rem;
+            padding: 6px 10px;
+        }
+        .timeline {
+            display: grid;
+            grid-template-columns: repeat(24, minmax(0, 1fr));
+            gap: 8px;
+            min-height: 210px;
+            align-items: end;
+            padding-bottom: 26px;
+        }
+        .bar {
+            background: linear-gradient(180deg, rgba(92, 200, 255, 0.35) 0%, rgba(73, 255, 149, 0.85) 100%);
+            border: 1px solid rgba(73, 255, 149, 0.2);
+            border-radius: 10px 10px 2px 2px;
+            min-height: 8px;
+            position: relative;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+        .bar span {
+            position: absolute;
+            bottom: -1.55rem;
+            left: 50%;
+            transform: translateX(-50%);
+            transform-origin: center;
+            color: var(--muted-2);
+            font-size: 0.66rem;
+            white-space: nowrap;
+            font-family: var(--mono);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.83rem;
+            font-family: var(--mono);
+        }
+        th, td {
+            padding: 11px 10px;
+            border-bottom: 1px solid var(--line-soft);
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            color: var(--muted);
+            position: sticky;
+            top: 0;
+            background: rgba(12, 18, 24, 0.98);
+            z-index: 1;
+        }
+        tbody tr:nth-child(even) { background: rgba(255, 255, 255, 0.012); }
+        .table-wrap, .live-stream { max-height: 62svh; overflow: auto; }
+        .row.selected {
+            background: rgba(92, 200, 255, 0.1);
+            box-shadow: inset 3px 0 0 var(--green);
+        }
+        .detail-block {
+            padding: 10px;
+            white-space: pre-wrap;
             word-break: break-word;
+            overflow: auto;
+            max-height: 28svh;
+            font-family: var(--mono);
+            line-height: 1.55;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .summary-card {
+            border: 1px solid var(--line-soft);
+            border-radius: 12px;
+            background: rgba(21, 34, 46, 0.55);
+            padding: 12px;
+        }
+        .summary-card .title {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.76rem;
+            font-family: var(--mono);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .summary-card .num {
+            margin-top: 8px;
+            color: var(--text);
+            font-size: 1.2rem;
+            font-family: var(--mono);
+        }
+        .stat-table {
+            width: 100%;
+            border-collapse: collapse;
             font-family: var(--mono);
             font-size: 0.82rem;
         }
-
-        @media (max-width: 720px) {
+        .stat-table th,
+        .stat-table td {
+            padding: 8px 6px;
+            border-bottom: 1px solid var(--line-soft);
+            text-align: left;
+            vertical-align: top;
+        }
+        .stat-table th {
+            color: var(--muted);
+            font-size: 0.74rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            background: transparent;
+            position: static;
+        }
+        .stat-table tr:last-child td {
+            border-bottom: 0;
+        }
+        .pattern-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .pattern-item {
+            border: 1px solid var(--line-soft);
+            border-radius: 12px;
+            background: rgba(21, 34, 46, 0.45);
+            padding: 12px;
+        }
+        .pattern-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: baseline;
+            margin-bottom: 8px;
+            font-family: var(--mono);
+        }
+        .pattern-route {
+            color: var(--text);
+            font-size: 0.92rem;
+        }
+        .pattern-count {
+            color: var(--green);
+            font-size: 0.86rem;
+        }
+        .pattern-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 6px 10px;
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+        .empty-state {
+            color: var(--muted);
+            font-family: var(--mono);
+            font-size: 0.84rem;
+            padding: 14px 2px;
+        }
+        #quick-filters button.active {
+            border-color: rgba(73, 255, 149, 0.85);
+            background: rgba(73, 255, 149, 0.1);
+            color: var(--green);
+        }
+        .hint-item {
+            border: 1px solid var(--line-soft);
+            border-radius: 12px;
+            background: rgba(21, 34, 46, 0.45);
+            padding: 10px 12px;
+            font-family: var(--mono);
+            font-size: 0.83rem;
+        }
+        .hint-item.warn {
+            border-color: rgba(255, 200, 87, 0.42);
+        }
+        .hint-item.bad {
+            border-color: rgba(255, 97, 119, 0.42);
+        }
+        .related-group {
+            border: 1px solid var(--line-soft);
+            border-radius: 12px;
+            background: rgba(21, 34, 46, 0.42);
+            padding: 10px;
+            font-family: var(--mono);
+        }
+        .related-group .group-title {
+            color: var(--cyan);
+            font-size: 0.8rem;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .related-item {
+            padding: 8px 0;
+            border-top: 1px solid var(--line-soft);
+            font-size: 0.8rem;
+        }
+        .related-item:first-child {
+            border-top: 0;
+            padding-top: 0;
+        }
+        .trace-tree {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-family: var(--mono);
+            font-size: 0.82rem;
+        }
+        .trace-node {
+            border-left: 2px solid rgba(73, 255, 149, 0.35);
+            padding-left: 10px;
+            margin-left: 4px;
+        }
+        .trace-node-head {
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+        .trace-node-meta {
+            color: var(--muted);
+            font-size: 0.76rem;
+        }
+        .investigation-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .investigation-header {
+            border: 1px solid var(--line-soft);
+            border-radius: 14px;
+            background: rgba(21, 34, 46, 0.5);
+            padding: 14px;
+        }
+        .investigation-section {
+            border: 1px solid var(--line-soft);
+            border-radius: 14px;
+            background: rgba(16, 25, 34, 0.72);
+            padding: 14px;
+        }
+        .investigation-section h3,
+        .investigation-header h3 {
+            margin: 0 0 10px;
+            color: var(--cyan);
+            font-family: var(--mono);
+            font-size: 0.92rem;
+        }
+        .split {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+        .result-tabs {
+            border-bottom: 1px solid var(--line-soft);
+            padding-bottom: 10px;
+            margin-bottom: 12px;
+        }
+        .live-item {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--line-soft);
+            display: grid;
+            grid-template-columns: 160px 150px 1fr;
+            gap: 10px;
+            font-family: var(--mono);
+        }
+        .code-inline { color: var(--green); }
+        .search-layout > aside,
+        .search-layout > section,
+        .search-layout > aside:last-child {
+            min-height: 0;
+        }
+        #view-search aside.panel {
+            position: sticky;
+            top: 106px;
+        }
+        #timeline:empty::before {
+            content: "No histogram buckets for the current search.";
+            color: var(--muted);
+            font-family: var(--mono);
+        }
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(92, 200, 255, 0.24);
+            border-radius: 999px;
+            border: 2px solid rgba(0, 0, 0, 0);
+            background-clip: padding-box;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.03);
+        }
+        svg { width: 100%; height: auto; }
+        @media (max-width: 1320px) {
+            .search-layout, .control-layout { grid-template-columns: 1fr; }
+            #view-search aside.panel {
+                position: static;
+                top: auto;
+            }
+        }
+        @media (max-width: 820px) {
+            .split, .live-item, .kv { grid-template-columns: 1fr; }
+            .main {
+                width: calc(100vw - 12px);
+                padding: 10px 6px 14px;
+            }
             .topbar {
-                padding: 14px;
+                padding: 12px 10px;
             }
-
-            .layout {
-                padding: 12px;
-                gap: 12px;
+            .timeline {
+                min-height: 160px;
+                gap: 6px;
             }
-
-            .panel-body {
-                padding: 14px;
+            .bar span {
+                font-size: 0.6rem;
             }
         }
     </style>
 </head>
 <body>
-    <div class="shell">
+    <div class="page">
         <header class="topbar">
-            <div class="title-wrap">
-                <h1 class="title">Epidemic Lab Dashboard</h1>
-                <div class="subtitle">Live backend console. Events are shown newest to oldest with full payload and metadata.</div>
+            <div class="topline">
+                <div>
+                    <h1 class="title">epidemic-lab :: search & investigation</h1>
+                    <div class="subtitle">Single-machine SIEM workflow for simulation events, traces, pivots, and live monitoring.</div>
+                </div>
+                <div class="statusbar">
+                    <div class="chip" id="api-chip">api: pending</div>
+                    <div class="chip" id="stream-chip">live: pending</div>
+                    <div class="chip" id="last-ts-chip">last event: -</div>
+                    <div class="chip" id="reset-chip">reset: -</div>
+                    <div class="chip" id="parse-chip">parse errors: 0</div>
+                </div>
             </div>
-            <div class="status-row">
-                <div class="pill" id="api-status">API: pending</div>
-                <div class="pill" id="latest-id">Latest event: 0</div>
-                <div class="pill good" id="clock">--</div>
+            <div class="toolbar nav">
+                <button class="active" data-view="control">Simulation Control</button>
+                <button data-view="search">Search</button>
+                <button data-view="live">Live</button>
             </div>
         </header>
 
-        <main class="layout">
-            <section class="panel">
-                <h2>Controls</h2>
-                <div class="panel-body">
-                    <div class="controls-grid">
-                        <select id="worm-level">
-                            <option value="easy">Easy</option>
-                            <option value="medium" selected>Medium</option>
-                            <option value="difficult">Difficult</option>
-                        </select>
-                        <button id="inject-btn" type="button">Inject agent-c</button>
-                        <button id="quarantine-btn" type="button">Quarantine agent-c</button>
-                        <button id="reset-btn" type="button">Reset all</button>
-                        <button id="dump-btn" type="button">Download logs</button>
+        <main class="main">
+            <section class="view active" id="view-control">
+                <div class="control-layout">
+                    <div class="panel">
+                        <div class="panel-head">simulation control</div>
+                        <div class="panel-body">
+                            <div class="controls-grid">
+                                <select id="worm-level">
+                                    <option value="easy">easy</option>
+                                    <option value="medium" selected>medium</option>
+                                    <option value="difficult">difficult</option>
+                                </select>
+                                <button id="inject-btn">inject agent-c</button>
+                                <button id="quarantine-btn">quarantine agent-c</button>
+                                <button id="reset-btn">hard reset</button>
+                                <button id="dump-btn">download logs</button>
+                            </div>
+                            <div style="margin-top: 14px;" class="error-box" id="control-status">control plane idle.</div>
+                        </div>
                     </div>
-                </div>
-            </section>
-
-            <section class="panel">
-                <h2>Summary</h2>
-                <div class="panel-body">
-                    <div class="summary-grid">
-                        <div class="summary-card">
-                            <div class="summary-label">Visible events</div>
-                            <div class="summary-value" id="summary-visible">0</div>
-                        </div>
-                        <div class="summary-card">
-                            <div class="summary-label">Infection successful</div>
-                            <div class="summary-value" id="summary-success">0</div>
-                        </div>
-                        <div class="summary-card">
-                            <div class="summary-label">Infection blocked</div>
-                            <div class="summary-value" id="summary-blocked">0</div>
-                        </div>
-                        <div class="summary-card">
-                            <div class="summary-label">Heartbeats</div>
-                            <div class="summary-value" id="summary-heartbeats">0</div>
+                    <div class="panel">
+                        <div class="panel-head">system health</div>
+                        <div class="panel-body">
+                            <div class="control-health" id="control-health"></div>
+                            <div style="margin-top: 12px;" class="cards" id="agent-cards"></div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <section class="panel">
-                <h2>Runtime Topology</h2>
-                <div class="panel-body">
-                    <div class="topology" id="topology-view"></div>
-                </div>
-            </section>
-
-            <section class="panel" style="grid-column: 1 / -1;">
-                <h2>Agents</h2>
-                <div class="panel-body">
-                    <div class="agents" id="agents-view"></div>
-                </div>
-            </section>
-
-            <section class="panel" style="grid-column: 1 / -1;">
-                <h2>Visible Errors</h2>
-                <div class="panel-body">
-                    <div class="error-box" id="error-box">No client-side errors recorded.</div>
-                </div>
-            </section>
-
-            <section class="panel events-panel">
-                <h2>
-                    <div class="events-header">
-                        <span>Live Event Stream</span>
-                        <span class="events-meta" id="events-meta">Newest first</span>
+            <section class="view" id="view-search">
+                <div class="panel search-shell">
+                    <div class="panel-head">new search</div>
+                    <div class="panel-body">
+                        <div class="search-header">
+                            <div class="query-shell">
+                                <div class="prompt">search ></div>
+                                <input id="search-query" placeholder="event=INFECTION_SUCCESSFUL AND dst=agent-a" />
+                            </div>
+                            <div class="query-tools">
+                                <select id="search-mode">
+                                    <option value="structured">structured</option>
+                                    <option value="natural">natural</option>
+                                </select>
+                                <select id="time-range">
+                                    <option value="all">all time</option>
+                                    <option value="last_15m">last 15m</option>
+                                    <option value="last_1h">last hour</option>
+                                    <option value="last_24h">last 24h</option>
+                                    <option value="last_7d">last 7d</option>
+                                </select>
+                                <button id="run-search-btn">run search</button>
+                                <button id="clear-search-btn">clear</button>
+                                <button id="export-search-btn">export</button>
+                            </div>
+                            <div class="toolbar" id="quick-filters">
+                                <button data-quick-filter="event=INFECTION_SUCCESSFUL">infections only</button>
+                                <button data-quick-filter="event=INFECTION_BLOCKED">blocked only</button>
+                                <button data-quick-filter="event=PROPAGATION_SUPPRESSED">suppressed only</button>
+                                <button data-quick-filter="source_plane=control">control plane only</button>
+                                <button data-quick-filter="source_plane!=control">data plane only</button>
+                                <button data-quick-filter="mutation_v>=1">mutations only</button>
+                                <button data-quick-filter="hop_count>=2">hop_count >= 2</button>
+                                <button data-quick-filter="event!=HEARTBEAT">hide heartbeats</button>
+                                <button data-quick-filter="current_reset">current reset only</button>
+                                <button data-quick-filter="current_run">current run only</button>
+                            </div>
+                            <div class="search-meta">
+                                <div class="meta-item" id="search-count-meta">events: 0</div>
+                                <div class="meta-item" id="search-window-meta">window: all time</div>
+                                <div class="meta-item" id="search-mode-meta">mode: structured</div>
+                                <div class="meta-item" id="search-last-meta">latest: -</div>
+                                <div class="meta-item" id="trace-scope-meta">trace: none</div>
+                            </div>
+                        </div>
+                        <div class="small" id="structured-query">structured query: (empty)</div>
                     </div>
-                </h2>
-                <div class="panel-body">
-                    <div class="event-list" id="event-list"></div>
+                </div>
+
+                <div class="search-layout">
+                    <aside class="panel">
+                        <div class="panel-head">field pivots</div>
+                        <div class="panel-body">
+                            <div class="sidebar-stack">
+                                <div class="sidebar-section">
+                                    <div class="sidebar-head">selected fields</div>
+                                    <div class="sidebar-body">
+                                        <div class="fields-list" id="selected-fields"></div>
+                                    </div>
+                                </div>
+                                <div class="sidebar-section">
+                                    <div class="sidebar-head">interesting fields</div>
+                                    <div class="sidebar-body">
+                                        <div class="fields-list" id="fields-sidebar"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <section class="search-center">
+                        <div class="panel">
+                            <div class="panel-head">timeline</div>
+                            <div class="panel-body">
+                                <div class="timeline" id="timeline"></div>
+                            </div>
+                        </div>
+
+                        <div class="panel">
+                            <div class="panel-head">analytic hints</div>
+                            <div class="panel-body">
+                                <div class="pattern-list" id="result-hints"></div>
+                            </div>
+                        </div>
+
+                        <div class="panel">
+                            <div class="panel-head">
+                                <span>results</span>
+                                <span id="search-summary">0 events</span>
+                            </div>
+                            <div class="panel-body">
+                                <div class="subtabs result-tabs">
+                                    <button class="active" data-search-tab="events">Events</button>
+                                    <button data-search-tab="patterns">Patterns</button>
+                                    <button data-search-tab="statistics">Statistics</button>
+                                    <button data-search-tab="visualization">Visualization</button>
+                                </div>
+                                <div class="view active" id="search-tab-events"><div class="table-wrap" id="events-table-wrap"></div></div>
+                                <div class="view" id="search-tab-patterns"><div class="cards" id="patterns-view"></div></div>
+                                <div class="view" id="search-tab-statistics"><div class="cards" id="statistics-view"></div></div>
+                                <div class="view" id="search-tab-visualization"><div class="cards" id="visualization-view"></div></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <aside class="panel">
+                        <div class="panel-head">event detail</div>
+                        <div class="panel-body">
+                            <div class="toolbar">
+                                <button id="pivot-src-btn">pivot src</button>
+                                <button id="pivot-dst-btn">pivot dst</button>
+                                <button id="pivot-attack-btn">pivot attack_type</button>
+                                <button id="pivot-injection-btn">pivot injection_id</button>
+                                <button id="pivot-reset-btn">pivot reset_id</button>
+                                <button id="pivot-trace-btn">trace</button>
+                                <button id="show-related-btn">show related</button>
+                                <button id="open-investigation-btn">open investigation</button>
+                                <button id="copy-json-btn">copy json</button>
+                            </div>
+                            <div style="margin-top: 12px;" class="kv" id="event-detail-kv"></div>
+                            <div style="margin-top: 12px;">
+                                <div class="small">analytic hints</div>
+                                <div class="pattern-list" id="detail-hints"></div>
+                            </div>
+                            <div style="margin-top: 12px;" class="split">
+                                <div>
+                                    <div class="small">metadata</div>
+                                    <div class="detail-block" id="detail-metadata">(no event selected)</div>
+                                </div>
+                                <div>
+                                    <div class="small">raw json</div>
+                                    <div class="detail-block" id="detail-raw">(no event selected)</div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 12px;">
+                                <div class="small">related / trace</div>
+                                <div class="detail-block" id="detail-trace">(no trace loaded)</div>
+                            </div>
+                            <div style="margin-top: 12px;">
+                                <div class="small">related events</div>
+                                <div class="pattern-list" id="detail-related"></div>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+
+                <div class="panel" id="investigation-panel" style="display:none; margin-top: 14px;">
+                    <div class="panel-head">
+                        <span>investigation</span>
+                        <span>
+                            <button id="investigation-export-btn">export investigation</button>
+                            <button id="investigation-close-btn">close</button>
+                        </span>
+                    </div>
+                    <div class="panel-body">
+                        <div id="investigation-body" class="cards"></div>
+                    </div>
                 </div>
             </section>
+
+            <section class="view" id="view-live">
+                <div class="panel">
+                    <div class="panel-head">live stream</div>
+                    <div class="panel-body">
+                        <div class="toolbar">
+                            <input id="live-filter" style="flex: 1 1 380px;" placeholder="optional live filter, e.g. dst=agent-a" />
+                            <button id="live-apply-btn">apply filter</button>
+                            <button id="live-pause-btn">pause</button>
+                            <button id="live-lock-btn">scroll lock: on</button>
+                            <button id="live-clear-btn">clear buffer</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="panel-head">live metrics</div>
+                    <div class="panel-body">
+                        <div class="live-metrics" id="live-metrics"></div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="panel-head">stream events</div>
+                    <div class="panel-body">
+                        <div class="live-stream" id="live-stream"></div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="error-box" id="error-box">no visible client or API errors.</div>
         </main>
     </div>
 
     <script>
         const API = window.location.origin;
-        const MAX_EVENTS = 120;
-        const TOPOLOGY = {
-            "agent-c": ["agent-b"],
-            "agent-b": ["agent-a"],
-            "agent-a": []
+        const state = {
+            control: null,
+            health: null,
+            search: { events: [], interesting_fields: {}, timeline: [], total: 0, structured_query: "" },
+            stats: null,
+            statsPresets: null,
+            patterns: null,
+            selectedEvent: null,
+            trace: null,
+            related: null,
+            resultHints: [],
+            investigation: null,
+            live: { events: [], latest_id: 0, metrics: {} },
+            livePaused: false,
+            liveScrollLock: true,
+            activeView: "control",
+            controlPoll: { busy: false, delayMs: 4000, timer: null },
+            livePoll: { busy: false, delayMs: 2000, timer: null },
+            errors: [],
         };
-        const AGENT_INFO = {
-            "agent-a": { role: "Guardian" },
-            "agent-b": { role: "Analyst" },
-            "agent-c": { role: "Courier" }
-        };
-
-        let events = [];
-        let latestEventId = 0;
-        let recentErrors = [];
-
-        function updateClock() {
-            document.getElementById("clock").textContent = new Date().toLocaleString();
-        }
-
-        function addClientError(message) {
-            const line = `[${new Date().toISOString()}] ${message}`;
-            recentErrors = [line].concat(recentErrors).slice(0, 20);
-            document.getElementById("error-box").textContent = recentErrors.join("\n\n");
-        }
-
-        function setApiStatus(ok, message) {
-            const status = document.getElementById("api-status");
-            status.textContent = message;
-            status.className = ok ? "pill good" : "pill";
-        }
 
         function escapeHtml(value) {
-            return String(value)
+            return String(value ?? "")
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")
-                .replace(/\"/g, "&quot;")
+                .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
         }
-
         function pretty(value) {
-            if (value === null || value === undefined || value === "") {
-                return "(empty)";
-            }
-            if (typeof value === "string") {
-                return value;
-            }
-            return JSON.stringify(value, null, 2);
+            if (value === null || value === undefined || value === "") return "(empty)";
+            return typeof value === "string" ? value : JSON.stringify(value, null, 2);
         }
-
-        function normalizeState(state) {
-            return String(state || "UNKNOWN").toUpperCase();
+        function formatNumber(value) {
+            const num = Number(value ?? 0);
+            return Number.isFinite(num) ? num.toLocaleString() : "-";
         }
-
-        function stateClass(state) {
-            const normalized = normalizeState(state).toLowerCase();
-            if (normalized === "healthy" || normalized === "infected" || normalized === "quarantined" || normalized === "resistant" || normalized === "exposed") {
-                return `state-${normalized}`;
+        function formatPercent(value) {
+            const num = Number(value ?? 0);
+            return Number.isFinite(num) ? `${(num * 100).toFixed(1)}%` : "-";
+        }
+        function formatCell(value) {
+            if (value === null || value === undefined || value === "") return "(empty)";
+            return escapeHtml(value);
+        }
+        function renderTableCard(label, columns, rows) {
+            return `
+                <div class="metric">
+                    <div class="label">${escapeHtml(label)}</div>
+                    ${rows.length ? `
+                        <table class="stat-table">
+                            <thead><tr>${columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}</tr></thead>
+                            <tbody>
+                                ${rows.map((row) => `<tr>${columns.map((column) => `<td>${formatCell(column.render ? column.render(row) : row[column.key])}</td>`).join("")}</tr>`).join("")}
+                            </tbody>
+                        </table>
+                    ` : `<div class="empty-state">No results for this view.</div>`}
+                </div>
+            `;
+        }
+        function quoteQueryValue(value) {
+            const text = String(value ?? "");
+            return /[\s()"]/g.test(text) ? `"${text.replace(/"/g, '\\"')}"` : text;
+        }
+        function queryTokens() {
+            return currentSearchText()
+                .split(/\s+AND\s+/i)
+                .map((token) => token.trim())
+                .filter(Boolean);
+        }
+        function setQueryTokens(tokens) {
+            setStructuredQuery(tokens.filter(Boolean).join(" AND "));
+        }
+        function toggleQueryToken(token) {
+            const tokens = queryTokens();
+            const exists = tokens.some((item) => item.toLowerCase() === token.toLowerCase());
+            setQueryTokens(exists ? tokens.filter((item) => item.toLowerCase() !== token.toLowerCase()) : tokens.concat(token));
+            runSearch().catch((error) => addError(`quick filter failed: ${error.message}`));
+        }
+        function addScopedToken(token) {
+            const tokens = queryTokens();
+            if (!tokens.some((item) => item.toLowerCase() === token.toLowerCase())) tokens.push(token);
+            setQueryTokens(tokens);
+            runSearch().catch((error) => addError(`pivot failed: ${error.message}`));
+        }
+        function renderHints(targetId, hints, emptyText = "No hints for the current scope.") {
+            const target = document.getElementById(targetId);
+            if (!target) return;
+            if (!hints || !hints.length) {
+                target.innerHTML = `<div class="empty-state">${escapeHtml(emptyText)}</div>`;
+                return;
             }
-            return "state-unknown";
-        }
-
-        function mergeEvents(newEvents) {
-            const known = new Map(events.map((event) => [Number(event.id), event]));
-            for (const event of newEvents) {
-                known.set(Number(event.id), event);
-                latestEventId = Math.max(latestEventId, Number(event.id || 0));
-            }
-            events = Array.from(known.values())
-                .sort((left, right) => Number(right.id) - Number(left.id))
-                .slice(0, MAX_EVENTS);
-        }
-
-        function deriveAgents() {
-            const agents = {};
-            for (const [agentId, info] of Object.entries(AGENT_INFO)) {
-                agents[agentId] = {
-                    id: agentId,
-                    role: info.role,
-                    state: "HEALTHY",
-                    lastEvent: "none",
-                    lastSeen: "-",
-                    lastPayload: "(no payload recorded)",
-                    lastMetadata: "(no metadata recorded)"
-                };
-            }
-
-            for (const event of events) {
-                const eventName = String(event.event || "");
-                const dst = String(event.dst || "");
-                const src = String(event.src || "");
-                const stateAfter = normalizeState(event.state_after);
-
-                if (eventName === "RESET_ISSUED") {
-                    for (const agent of Object.values(agents)) {
-                        if (agent.lastEvent === "none") {
-                            agent.state = "HEALTHY";
-                            agent.lastEvent = "RESET_ISSUED";
-                            agent.lastSeen = event.ts || "-";
-                        }
-                    }
-                    continue;
-                }
-
-                if (dst in agents && agents[dst].lastEvent === "none") {
-                    agents[dst].lastEvent = eventName || "unknown";
-                    agents[dst].lastSeen = event.ts || "-";
-                    if (stateAfter !== "UNKNOWN") {
-                        agents[dst].state = stateAfter;
-                    } else if (eventName === "QUARANTINE_ISSUED") {
-                        agents[dst].state = "QUARANTINED";
-                    } else if (eventName === "INFECTION_SUCCESSFUL") {
-                        agents[dst].state = "INFECTED";
-                    }
-                }
-
-                if (dst in agents && event.payload && agents[dst].lastPayload === "(no payload recorded)") {
-                    agents[dst].lastPayload = String(event.payload);
-                }
-
-                if (dst in agents && event.metadata && agents[dst].lastMetadata === "(no metadata recorded)") {
-                    agents[dst].lastMetadata = pretty(event.metadata);
-                }
-
-                if (src in agents && event.payload && agents[src].lastPayload === "(no payload recorded)") {
-                    agents[src].lastPayload = String(event.payload);
-                }
-            }
-
-            return agents;
-        }
-
-        function renderTopology() {
-            const lines = Object.entries(TOPOLOGY).map(([agent, neighbors]) => {
-                return `${agent} -> ${neighbors.length ? neighbors.join(", ") : "(no neighbors)"}`;
-            });
-            document.getElementById("topology-view").textContent = lines.join("\n");
-        }
-
-        function renderSummary() {
-            const counts = {
-                success: 0,
-                blocked: 0,
-                heartbeats: 0
-            };
-            for (const event of events) {
-                const name = String(event.event || "");
-                if (name === "INFECTION_SUCCESSFUL") counts.success += 1;
-                if (name === "INFECTION_BLOCKED") counts.blocked += 1;
-                if (name === "HEARTBEAT") counts.heartbeats += 1;
-            }
-            document.getElementById("summary-visible").textContent = String(events.length);
-            document.getElementById("summary-success").textContent = String(counts.success);
-            document.getElementById("summary-blocked").textContent = String(counts.blocked);
-            document.getElementById("summary-heartbeats").textContent = String(counts.heartbeats);
-            document.getElementById("latest-id").textContent = `Latest event: ${latestEventId}`;
-            document.getElementById("events-meta").textContent = `Newest first | showing ${events.length} events`;
-        }
-
-        function renderAgents() {
-            const agents = deriveAgents();
-            const container = document.getElementById("agents-view");
-            container.innerHTML = Object.values(agents).map((agent) => `
-                <article class="agent-card">
-                    <div class="agent-head">
-                        <div>
-                            <div><strong>${escapeHtml(agent.id)}</strong></div>
-                            <div class="agent-role">${escapeHtml(agent.role)}</div>
-                        </div>
-                        <div class="badge ${stateClass(agent.state)}">${escapeHtml(agent.state)}</div>
-                    </div>
-                    <div class="kv">
-                        <div class="key">Last event</div>
-                        <div>${escapeHtml(agent.lastEvent)}</div>
-                        <div class="key">Last seen</div>
-                        <div>${escapeHtml(agent.lastSeen)}</div>
-                    </div>
-                    <div class="event-section">
-                        <h3>Last payload</h3>
-                        <pre class="code-block">${escapeHtml(agent.lastPayload)}</pre>
-                    </div>
-                    <div class="event-section">
-                        <h3>Last metadata</h3>
-                        <pre class="code-block">${escapeHtml(agent.lastMetadata)}</pre>
-                    </div>
-                </article>
+            target.innerHTML = hints.map((hint) => `
+                <div class="hint-item ${escapeHtml(hint.severity || "info")}">${escapeHtml(hint.message || hint)}</div>
             `).join("");
         }
-
-        function renderEvents() {
-            const container = document.getElementById("event-list");
-            container.innerHTML = events.map((event) => {
-                const metadata = pretty(event.metadata);
-                const route = `${event.src || "?"} -> ${event.dst || "?"}`;
-                const extra = [
-                    event.attack_type ? `attack=${event.attack_type}` : null,
-                    event.state_after ? `state=${event.state_after}` : null,
-                    event.mutation_v !== null && event.mutation_v !== undefined ? `mutation=${event.mutation_v}` : null,
-                    event.metadata && typeof event.metadata === "object" && "hop_count" in event.metadata ? `hop=${event.metadata.hop_count}` : null
-                ].filter(Boolean).join(" | ");
-
-                return `
-                    <article class="event-card">
-                        <div class="event-top">
-                            <div class="event-name">${escapeHtml(event.event || "UNKNOWN")}</div>
-                            <div class="event-route">${escapeHtml(route)}</div>
-                            <div class="event-time">${escapeHtml(event.ts || "-")}</div>
-                            <div class="event-extra">${escapeHtml(extra || "no extra fields")}</div>
-                        </div>
-                        <div class="event-section">
-                            <h3>Payload</h3>
-                            <pre class="code-block">${escapeHtml(pretty(event.payload))}</pre>
-                        </div>
-                        <div class="event-section">
-                            <h3>Metadata</h3>
-                            <pre class="code-block">${escapeHtml(metadata)}</pre>
-                        </div>
-                    </article>
-                `;
-            }).join("");
+        function renderQuickFilters() {
+            const tokens = queryTokens().map((token) => token.toLowerCase());
+            document.querySelectorAll("[data-quick-filter]").forEach((button) => {
+                const filter = button.dataset.quickFilter;
+                let active = false;
+                if (filter === "current_reset") {
+                    const resetId = state.control?.analytics?.run_integrity?.reset_id || state.live.metrics?.last_reset_id;
+                    active = !!resetId && tokens.includes(`reset_id=${quoteQueryValue(resetId)}`.toLowerCase());
+                } else if (filter === "current_run") {
+                    const epoch = state.control?.analytics?.run_integrity?.epoch;
+                    active = epoch !== undefined && epoch !== null && tokens.includes(`epoch=${epoch}`.toLowerCase());
+                } else {
+                    active = tokens.includes(filter.toLowerCase());
+                }
+                button.classList.toggle("active", active);
+            });
         }
-
-        function renderAll() {
-            renderSummary();
-            renderTopology();
-            renderAgents();
-            renderEvents();
+        function renderTraceTree(nodes, nested = false) {
+            if (!nodes || !nodes.length) return nested ? "" : `<div class="empty-state">No trace tree available.</div>`;
+            return `<div class="trace-tree">${nodes.map((node) => `
+                <div class="trace-node">
+                    <div class="trace-node-head">${escapeHtml(node.label)}</div>
+                    <div class="trace-node-meta">
+                        ts=${escapeHtml(node.event?.ts || "-")} | attack=${escapeHtml(node.event?.attack_type || "(empty)")} |
+                        v=${escapeHtml(node.event?.mutation_v ?? "-")} | hop=${escapeHtml(node.event?.hop_count ?? "-")} |
+                        outcome=${escapeHtml(node.event?.state_after || node.event?.event || "-")}
+                    </div>
+                    ${renderTraceTree(node.children || [], true)}
+                </div>
+            `).join("")}</div>`;
         }
-
-        async function fetchEvents(params) {
-            const response = await fetch(`${API}/events?${params}`);
-            if (!response.ok) {
-                throw new Error(`events request failed with ${response.status}`);
+        function currentSearchText() {
+            return state.search?.structured_query || document.getElementById("search-query").value.trim();
+        }
+        function setStructuredQuery(value) {
+            document.getElementById("search-mode").value = "structured";
+            document.getElementById("search-query").value = value;
+        }
+        function clearSelectedFilters() {
+            setStructuredQuery("");
+            runSearch().catch((error) => addError(`clear pivots failed: ${error.message}`));
+        }
+        function parseSelectedFields(query) {
+            if (!query) return [];
+            const seen = new Set();
+            return query
+                .split(/\s+(?:AND|OR)\s+/i)
+                .map((token) => token.trim())
+                .filter(Boolean)
+                .map((token) => {
+                    const match = token.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*(=|!=|>=|<=|>|<)\s*(.+)$/);
+                    if (!match) return null;
+                    return {
+                        field: match[1],
+                        operator: match[2],
+                        value: match[3].replace(/^["']|["']$/g, ""),
+                        token,
+                    };
+                })
+                .filter((item) => {
+                    if (!item) return false;
+                    const key = `${item.field}:${item.operator}:${item.value}`;
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                });
+        }
+        function addError(message) {
+            const line = `[${new Date().toISOString()}] ${message}`;
+            state.errors = [line].concat(state.errors).slice(0, 12);
+            document.getElementById("error-box").textContent = state.errors.join("\n\n");
+        }
+        function setChip(id, text, kind = "") {
+            const node = document.getElementById(id);
+            node.textContent = text;
+            node.className = kind ? `chip ${kind}` : "chip";
+        }
+        function switchView(name) {
+            state.activeView = name;
+            document.querySelectorAll(".nav button").forEach((button) => button.classList.toggle("active", button.dataset.view === name));
+            document.querySelectorAll(".main > .view").forEach((view) => view.classList.toggle("active", view.id === `view-${name}`));
+            scheduleControlPoll(250);
+            scheduleLivePoll(250);
+        }
+        async function switchSearchTab(name) {
+            document.querySelectorAll("[data-search-tab]").forEach((button) => button.classList.toggle("active", button.dataset.searchTab === name));
+            document.querySelectorAll("#view-search .view").forEach((view) => {
+                if (view.id.startsWith("search-tab-")) view.classList.toggle("active", view.id === `search-tab-${name}`);
+            });
+            if (name === "patterns" && !state.patterns) {
+                state.patterns = await fetchJson(buildSearchPath("/api/patterns"));
+                renderPatterns();
             }
+            if (name === "statistics" && !state.stats) {
+                const [statsPayload, presetPayload] = await Promise.all([
+                    fetchJson(buildSearchPath("/api/stats")),
+                    fetchJson(buildSearchPath("/api/stats/presets")),
+                ]);
+                state.stats = statsPayload;
+                state.statsPresets = presetPayload;
+                renderStats();
+            }
+            if (name === "visualization") {
+                if (!state.patterns) state.patterns = await fetchJson(buildSearchPath("/api/patterns"));
+                if (!state.stats) {
+                    const [statsPayload, presetPayload] = await Promise.all([
+                        fetchJson(buildSearchPath("/api/stats")),
+                        fetchJson(buildSearchPath("/api/stats/presets")),
+                    ]);
+                    state.stats = statsPayload;
+                    state.statsPresets = presetPayload;
+                }
+                renderVisualization();
+            }
+        }
+
+        async function fetchJson(path) {
+            const response = await fetch(`${API}${path}`);
+            if (!response.ok) throw new Error(`${path} failed with ${response.status}`);
             return response.json();
         }
-
-        async function loadInitialEvents() {
-            const payload = await fetchEvents("limit=120&order=desc");
-            latestEventId = Number(payload.latest_id || 0);
-            mergeEvents(payload.events || []);
-            renderAll();
-        }
-
-        async function pollNewEvents() {
-            try {
-                const payload = await fetchEvents(`after_id=${latestEventId}&limit=120&order=asc`);
-                mergeEvents(payload.events || []);
-                if (payload.latest_id) {
-                    latestEventId = Math.max(latestEventId, Number(payload.latest_id));
-                }
-                renderAll();
-                setApiStatus(true, "API: connected");
-            } catch (error) {
-                setApiStatus(false, `API: ${error.message}`);
-                addClientError(`poll failure: ${error.message}`);
-            }
-        }
-
         async function postJson(path, body) {
             const response = await fetch(`${API}${path}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body || {})
+                body: JSON.stringify(body || {}),
             });
-            if (!response.ok) {
-                throw new Error(`${path} failed with ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`${path} failed with ${response.status}`);
             return response.json();
         }
 
-        async function inject() {
-            const level = document.getElementById("worm-level").value;
+        async function loadControl() {
+            const [control, health] = await Promise.all([fetchJson("/dashboard/state"), fetchJson("/api/health")]);
+            state.control = control;
+            state.health = health;
+            renderControl();
+            renderStatus();
+        }
+
+        function renderControl() {
+            const analytics = state.control?.analytics || {};
+            const health = state.health || {};
+            document.getElementById("control-health").innerHTML = [
+                ["indexed events", health.indexed_events ?? 0],
+                ["parse errors", health.parse_errors ?? 0],
+                ["event rate", analytics.event_rate?.events_per_sec ?? 0],
+                ["latest reset", analytics.run_integrity?.reset_id || "-"],
+            ].map(([label, value]) => `<div class="metric"><div class="label">${escapeHtml(label)}</div><div class="value">${escapeHtml(value)}</div></div>`).join("");
+            document.getElementById("agent-cards").innerHTML = Object.values(state.control?.agents || {}).map((agent) => `
+                <div class="agent-card"><div class="kv">
+                    <div class="key">agent</div><div>${escapeHtml(agent.id)}</div>
+                    <div class="key">role</div><div>${escapeHtml(agent.role)}</div>
+                    <div class="key">state</div><div>${escapeHtml(agent.state)}</div>
+                    <div class="key">last event</div><div>${escapeHtml(agent.last_event)}</div>
+                    <div class="key">last seen</div><div>${escapeHtml(agent.last_seen)}</div>
+                </div></div>
+            `).join("");
+        }
+
+        function buildSearchPath(pathBase) {
+            const params = new URLSearchParams();
+            params.set("q", document.getElementById("search-query").value.trim());
+            params.set("mode", document.getElementById("search-mode").value);
+            params.set("time_range", document.getElementById("time-range").value);
+            return `${pathBase}?${params.toString()}`;
+        }
+
+        async function runSearch() {
+            const [searchPayload, hintsPayload] = await Promise.all([
+                fetchJson(buildSearchPath("/api/search")),
+                fetchJson(buildSearchPath("/api/hints")),
+            ]);
+            state.search = searchPayload;
+            state.resultHints = hintsPayload.hints || [];
+            state.patterns = null;
+            state.stats = null;
+            state.statsPresets = null;
+            state.selectedEvent = searchPayload.events[0] || null;
+            state.related = null;
+            state.trace = null;
+            state.investigation = null;
+            renderSearch();
+            if (state.selectedEvent) {
+                await Promise.all([loadTrace(state.selectedEvent.event_id), loadRelated(state.selectedEvent.event_id)]);
+            } else {
+                document.getElementById("detail-trace").textContent = "(no trace loaded)";
+            }
+            renderStatus();
+        }
+
+        function renderSearch() {
+            document.getElementById("structured-query").textContent = `structured query: ${state.search.structured_query || "(empty)"}`;
+            document.getElementById("search-summary").textContent = `${state.search.total || 0} events`;
+            document.getElementById("search-count-meta").textContent = `events: ${state.search.total || 0}`;
+            document.getElementById("search-window-meta").textContent = `window: ${document.getElementById("time-range").selectedOptions[0]?.textContent || "all time"}`;
+            document.getElementById("search-mode-meta").textContent = `mode: ${document.getElementById("search-mode").value}`;
+            document.getElementById("search-last-meta").textContent = `latest: ${state.search.events?.[0]?.ts || "-"}`;
+            document.getElementById("trace-scope-meta").textContent = `trace: ${state.trace?.scope_reason || "none"}`;
+            renderQuickFilters();
+            renderSelectedFields();
+            renderFields();
+            renderTimeline();
+            renderHints("result-hints", state.resultHints, "No analytic hints for the current result set.");
+            renderEventsTable();
+            renderPatterns();
+            renderStats();
+            renderVisualization();
+            renderDetail();
+        }
+        function renderSelectedFields() {
+            const selected = parseSelectedFields(currentSearchText());
+            const target = document.getElementById("selected-fields");
+            if (!selected.length) {
+                target.innerHTML = `<div class="small">No selected fields in the active query.</div>`;
+                return;
+            }
+            target.innerHTML = `
+                <div class="selected-actions">
+                    <button id="clear-pivots-btn">clear all pivots</button>
+                </div>
+            ` + selected.map((item) => `
+                <div class="selected-field">
+                    <div>${escapeHtml(item.field)} ${escapeHtml(item.operator)} ${escapeHtml(item.value)}</div>
+                    <button data-remove-token="${escapeHtml(item.token)}">clear</button>
+                </div>
+            `).join("");
+            document.getElementById("clear-pivots-btn")?.addEventListener("click", clearSelectedFilters);
+            target.querySelectorAll("[data-remove-token]").forEach((button) => button.addEventListener("click", () => {
+                const tokens = parseSelectedFields(currentSearchText()).filter((item) => item.token !== button.dataset.removeToken).map((item) => `${item.field}${item.operator}${quoteQueryValue(item.value)}`);
+                setStructuredQuery(tokens.join(" AND "));
+                runSearch().catch((error) => addError(`selected field removal failed: ${error.message}`));
+            }));
+        }
+        function renderFields() {
+            const sidebar = document.getElementById("fields-sidebar");
+            sidebar.innerHTML = Object.entries(state.search.interesting_fields || {}).map(([field, values]) => `
+                <div class="field-group">
+                    <div class="field-title"><span>${escapeHtml(field)}</span><span>${escapeHtml((values || []).length)} values</span></div>
+                    ${(values || []).map((item) => `<button class="field-pill" data-field="${escapeHtml(field)}" data-value="${escapeHtml(item.value)}"><span>${escapeHtml(item.value)}</span><span>${escapeHtml(item.count)}</span></button>`).join("")}
+                </div>
+            `).join("");
+            sidebar.querySelectorAll("[data-field]").forEach((button) => button.addEventListener("click", () => {
+                const token = `${button.dataset.field}=${quoteQueryValue(button.dataset.value)}`;
+                const base = currentSearchText();
+                setStructuredQuery(base ? `${base} AND ${token}` : token);
+                runSearch().catch((error) => addError(`search pivot failed: ${error.message}`));
+            }));
+        }
+        function renderTimeline() {
+            const timeline = state.search.timeline || [];
+            const max = Math.max(1, ...timeline.map((item) => item.count || 0));
+            const step = Math.max(1, Math.ceil(timeline.length / 8));
+            document.getElementById("timeline").innerHTML = timeline.map((item, index) => `
+                <div class="bar" title="${escapeHtml(`${item.label}: ${item.count || 0}`)}" style="height:${Math.max(8, ((item.count || 0) / max) * 170)}px">
+                    <span>${index % step === 0 || index === timeline.length - 1 ? escapeHtml(item.label) : ""}</span>
+                </div>
+            `).join("");
+        }
+        function renderEventsTable() {
+            const rows = state.search.events || [];
+            const wrap = document.getElementById("events-table-wrap");
+            wrap.innerHTML = `
+                <table><thead><tr><th>ts</th><th>event</th><th>src → dst</th><th>attack_type</th><th>attack_strength</th><th>state_after</th><th>mutation_v</th><th>hop_count</th><th>reset_id</th><th>epoch</th><th>injection_id</th></tr></thead>
+                <tbody>${rows.map((event) => `
+                    <tr class="row ${state.selectedEvent?.event_id === event.event_id ? "selected" : ""}" data-event-id="${escapeHtml(event.event_id)}">
+                        <td>${escapeHtml(event.ts)}</td><td>${escapeHtml(event.event)}</td><td>${escapeHtml(`${event.src || "?"} -> ${event.dst || "?"}`)}</td><td>${escapeHtml(event.attack_type || "")}</td>
+                        <td>${escapeHtml(event.attack_strength ?? "")}</td><td>${escapeHtml(event.state_after || "")}</td><td>${escapeHtml(event.mutation_v ?? "")}</td><td>${escapeHtml(event.hop_count ?? "")}</td>
+                        <td>${escapeHtml(event.reset_id || "")}</td><td>${escapeHtml(event.epoch ?? "")}</td><td>${escapeHtml(event.injection_id || "")}</td>
+                    </tr>`).join("")}</tbody></table>`;
+            wrap.querySelectorAll("[data-event-id]").forEach((row) => row.addEventListener("click", async () => {
+                state.selectedEvent = rows.find((item) => item.event_id === row.dataset.eventId) || null;
+                renderEventsTable();
+                renderDetail();
+                await Promise.all([loadTrace(row.dataset.eventId), loadRelated(row.dataset.eventId)]);
+            }));
+        }
+        function renderPatterns() {
+            const patterns = state.patterns || { route_patterns: [], suppression_patterns: [], mutation_sequences: [] };
+            const renderPatternList = (items, renderer, emptyText) => {
+                if (!items.length) return `<div class="empty-state">${escapeHtml(emptyText)}</div>`;
+                return `<div class="pattern-list">${items.map(renderer).join("")}</div>`;
+            };
+            document.getElementById("patterns-view").innerHTML = [
+                `
+                    <div class="metric">
+                        <div class="label">pattern cards</div>
+                        ${renderPatternList(patterns.pattern_cards || [], (item) => `
+                            <div class="pattern-item">
+                                <div class="pattern-head">
+                                    <div class="pattern-route">${escapeHtml(item.name || "pattern")}</div>
+                                    <div class="pattern-count">${escapeHtml(formatNumber(item.count))} (${escapeHtml(item.percentage)}%)</div>
+                                </div>
+                                <div class="pattern-meta">
+                                    <div>${escapeHtml(item.explanation || "")}</div>
+                                </div>
+                                <div class="toolbar" style="margin-top:8px;">
+                                    <button data-pattern-pivot="${escapeHtml(item.pivot_query || "")}">pivot</button>
+                                    <button data-pattern-inspect="${escapeHtml(item.inspect_query || "")}">inspect</button>
+                                </div>
+                            </div>
+                        `, "No dominant pattern cards for this result set.")}
+                    </div>
+                `,
+                `
+                    <div class="metric">
+                        <div class="label">route patterns</div>
+                        ${renderPatternList(patterns.route_patterns || [], (item) => `
+                            <div class="pattern-item">
+                                <div class="pattern-head">
+                                    <div class="pattern-route">${escapeHtml(`${item.src || "?"} -> ${item.dst || "?"}`)}</div>
+                                    <div class="pattern-count">${escapeHtml(formatNumber(item.count))} hits</div>
+                                </div>
+                                <div class="pattern-meta">
+                                    <div>attack_type: ${escapeHtml(item.attack_type || "(empty)")}</div>
+                                    <div>first_seen: ${escapeHtml(item.first_seen || "-")}</div>
+                                    <div>last_seen: ${escapeHtml(item.last_seen || "-")}</div>
+                                </div>
+                            </div>
+                        `, "No recurring routes in the current result set.")}
+                    </div>
+                `,
+                `
+                    <div class="metric">
+                        <div class="label">suppression patterns</div>
+                        ${renderPatternList(patterns.suppression_patterns || [], (item) => `
+                            <div class="pattern-item">
+                                <div class="pattern-head">
+                                    <div class="pattern-route">${escapeHtml(item.event || "suppression")} :: ${escapeHtml(`${item.src || "?"} -> ${item.dst || "?"}`)}</div>
+                                    <div class="pattern-count">${escapeHtml(formatNumber(item.count))} hits</div>
+                                </div>
+                                <div class="pattern-meta">
+                                    <div>reset_id: ${escapeHtml(item.reset_id || "(empty)")}</div>
+                                </div>
+                            </div>
+                        `, "No suppression patterns matched this search.")}
+                    </div>
+                `,
+                `
+                    <div class="metric">
+                        <div class="label">mutation sequences</div>
+                        ${renderPatternList(patterns.mutation_sequences || [], (item) => `
+                            <div class="pattern-item">
+                                <div class="pattern-head">
+                                    <div class="pattern-route">${escapeHtml(`${item.src || "?"} -> ${item.dst || "?"}`)}</div>
+                                    <div class="pattern-count">${escapeHtml(formatNumber(item.count))} events</div>
+                                </div>
+                                <div class="pattern-meta">
+                                    <div>injection_id: ${escapeHtml(item.injection_id || "(empty)")}</div>
+                                    <div>mutation_start: ${escapeHtml(item.mutation_start ?? "-")}</div>
+                                    <div>mutation_end: ${escapeHtml(item.mutation_end ?? "-")}</div>
+                                </div>
+                            </div>
+                        `, "No mutation sequences matched this search.")}
+                    </div>
+                `,
+                renderTableCard("blocked targets", [
+                    { key: "dst", label: "dst" },
+                    { key: "count", label: "count", render: (row) => formatNumber(row.count) },
+                ], patterns.blocked_targets || []),
+                renderTableCard("terminal outcome combinations", [
+                    { key: "attack_type", label: "attack_type" },
+                    { key: "event", label: "outcome" },
+                    { key: "count", label: "count", render: (row) => formatNumber(row.count) },
+                ], patterns.outcome_patterns || []),
+                renderTableCard("hop depth structures", [
+                    { key: "hop_count", label: "hop_count" },
+                    { key: "count", label: "count", render: (row) => formatNumber(row.count) },
+                ], patterns.depth_patterns || []),
+                renderTableCard("stale-context events", [
+                    { key: "event", label: "event" },
+                    { key: "count", label: "count", render: (row) => formatNumber(row.count) },
+                ], patterns.stale_context_patterns || []),
+                renderTableCard("unresolved attempt patterns", [
+                    { key: "src", label: "src" },
+                    { key: "dst", label: "dst" },
+                    { key: "hop_count", label: "hop" },
+                    { key: "count", label: "count", render: (row) => formatNumber(row.count) },
+                ], patterns.unresolved_attempt_patterns || []),
+            ].join("");
+            document.querySelectorAll("[data-pattern-pivot]").forEach((button) => button.addEventListener("click", () => {
+                setStructuredQuery(button.dataset.patternPivot || "");
+                runSearch().catch((error) => addError(`pattern pivot failed: ${error.message}`));
+            }));
+            document.querySelectorAll("[data-pattern-inspect]").forEach((button) => button.addEventListener("click", () => {
+                setStructuredQuery(button.dataset.patternInspect || "");
+                runSearch().catch((error) => addError(`pattern inspect failed: ${error.message}`));
+            }));
+        }
+        function renderStats() {
+            const stats = state.stats || { count_by_event: [], count_by_attack_type: [], src_dst_frequency: [] };
+            const presets = state.statsPresets?.primary?.presets || stats.presets || {};
+            document.getElementById("statistics-view").innerHTML = `
+                <div class="metric" style="grid-column: 1 / -1;">
+                    <div class="label">summary</div>
+                    <div class="summary-grid">
+                        <div class="summary-card"><div class="title">successful</div><div class="num">${escapeHtml(formatNumber(stats.successful))}</div></div>
+                        <div class="summary-card"><div class="title">blocked</div><div class="num">${escapeHtml(formatNumber(stats.blocked))}</div></div>
+                        <div class="summary-card"><div class="title">attempts</div><div class="num">${escapeHtml(formatNumber(stats.attempts))}</div></div>
+                        <div class="summary-card"><div class="title">success rate</div><div class="num">${escapeHtml(formatPercent(stats.success_rate))}</div></div>
+                        <div class="summary-card"><div class="title">avg attack strength</div><div class="num">${escapeHtml(Number(stats.avg_attack_strength ?? 0).toFixed(3))}</div></div>
+                    </div>
+                </div>
+                ${renderTableCard("count by event", [
+                    { key: "event", label: "event" },
+                    { key: "count", label: "count", render: (row) => formatNumber(row.count) },
+                ], stats.count_by_event || [])}
+                ${renderTableCard("count by attack_type", [
+                    { key: "attack_type", label: "attack_type" },
+                    { key: "count", label: "count", render: (row) => formatNumber(row.count) },
+                ], stats.count_by_attack_type || [])}
+                ${renderTableCard("src/dst frequency", [
+                    { key: "src", label: "src" },
+                    { key: "dst", label: "dst" },
+                    { key: "count", label: "count", render: (row) => formatNumber(row.count) },
+                ], stats.src_dst_frequency || [])}
+                ${renderTableCard("success rate by attack_type", [
+                    { key: "attack_type", label: "attack_type" },
+                    { key: "successful", label: "success", render: (row) => formatNumber(row.successful) },
+                    { key: "blocked", label: "blocked", render: (row) => formatNumber(row.blocked) },
+                    { key: "success_rate", label: "rate", render: (row) => formatPercent(row.success_rate) },
+                ], presets.success_rate_by_attack_type || [])}
+                ${renderTableCard("success rate by dst", [
+                    { key: "dst", label: "dst" },
+                    { key: "successful", label: "success", render: (row) => formatNumber(row.successful) },
+                    { key: "blocked", label: "blocked", render: (row) => formatNumber(row.blocked) },
+                    { key: "success_rate", label: "rate", render: (row) => formatPercent(row.success_rate) },
+                ], presets.success_rate_by_dst || [])}
+                ${renderTableCard("success rate by src/dst", [
+                    { key: "src", label: "src" },
+                    { key: "dst", label: "dst" },
+                    { key: "success_rate", label: "rate", render: (row) => formatPercent(row.success_rate) },
+                ], presets.success_rate_by_src_dst || [])}
+                ${renderTableCard("average attack strength by attack_type", [
+                    { key: "attack_type", label: "attack_type" },
+                    { key: "avg_attack_strength", label: "avg_strength" },
+                ], presets.average_attack_strength_by_attack_type || [])}
+                ${renderTableCard("blocked vs successful by target", [
+                    { key: "dst", label: "dst" },
+                    { key: "blocked", label: "blocked", render: (row) => formatNumber(row.blocked) },
+                    { key: "successful", label: "successful", render: (row) => formatNumber(row.successful) },
+                ], presets.blocked_vs_successful_by_target || [])}
+                ${renderTableCard("hop_count distribution", [
+                    { key: "hop_count", label: "hop_count" },
+                    { key: "count", label: "count", render: (row) => formatNumber(row.count) },
+                ], presets.hop_count_distribution || [])}
+                ${renderTableCard("activity by reset_id", [
+                    { key: "reset_id", label: "reset_id" },
+                    { key: "count", label: "count", render: (row) => formatNumber(row.count) },
+                ], presets.activity_by_reset_id || [])}
+                ${renderTableCard("activity by epoch", [
+                    { key: "epoch", label: "epoch" },
+                    { key: "count", label: "count", render: (row) => formatNumber(row.count) },
+                ], presets.activity_by_epoch || [])}
+            `;
+        }
+        function renderVisualization() {
+            const stats = state.stats || { count_by_event: [] };
+            const routes = (state.patterns?.route_patterns || []).slice(0, 6);
+            const max = Math.max(1, ...((stats.count_by_event || []).map((item) => item.count || 0)));
+            const eventBars = (stats.count_by_event || []).map((item) => `<div style="margin-bottom:8px;"><div class="small">${escapeHtml(item.event)} (${escapeHtml(item.count)})</div><div class="bar" style="height:14px; width:${Math.max(8, ((item.count || 0) / max) * 100)}%;"><span></span></div></div>`).join("");
+            const routeSvg = `<svg viewBox="0 0 460 180" role="img" aria-label="network graph"><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#5cc8ff"></path></marker></defs><circle cx="70" cy="90" r="24" fill="#15222e" stroke="#49ff95"></circle><circle cx="230" cy="90" r="24" fill="#15222e" stroke="#49ff95"></circle><circle cx="390" cy="90" r="24" fill="#15222e" stroke="#49ff95"></circle><text x="70" y="95" text-anchor="middle" fill="#d8e7f2" font-size="12">agent-c</text><text x="230" y="95" text-anchor="middle" fill="#d8e7f2" font-size="12">agent-b</text><text x="390" y="95" text-anchor="middle" fill="#d8e7f2" font-size="12">agent-a</text>${routes.map((route) => { const start = route.src === "agent-c" ? 94 : 254; const end = route.dst === "agent-a" ? 366 : 206; return `<line x1="${start}" y1="90" x2="${end}" y2="90" stroke="#5cc8ff" stroke-width="${Math.max(2, Math.min(10, route.count || 1))}" marker-end="url(#arrow)"></line>`; }).join("")}</svg>`;
+            document.getElementById("visualization-view").innerHTML = `<div class="metric"><div class="label">bar chart :: count by event</div><div>${eventBars || "(no event bars)"}</div></div><div class="metric"><div class="label">network graph :: observed routes</div><div>${routeSvg}</div></div>`;
+        }
+        function renderRelated() {
+            const target = document.getElementById("detail-related");
+            if (!state.related?.groups) {
+                target.innerHTML = `<div class="empty-state">No related events loaded.</div>`;
+                return;
+            }
+            target.innerHTML = Object.entries(state.related.groups).map(([group, events]) => `
+                <div class="related-group">
+                    <div class="group-title">${escapeHtml(group.replaceAll("_", " "))} (${escapeHtml(events.length)})</div>
+                    ${events.length ? events.slice(0, 5).map((event) => `
+                        <div class="related-item">
+                            <div>${escapeHtml(event.ts || "-")} :: ${escapeHtml(event.event || "")}</div>
+                            <div class="small">${escapeHtml(`${event.src || "?"} -> ${event.dst || "?"}`)} | injection=${escapeHtml(event.injection_id || "(empty)")}</div>
+                        </div>
+                    `).join("") : `<div class="empty-state">No events in this correlation group.</div>`}
+                </div>
+            `).join("");
+        }
+        function renderDetail() {
+            const event = state.selectedEvent;
+            if (!event) {
+                document.getElementById("event-detail-kv").innerHTML = "";
+                document.getElementById("detail-metadata").textContent = "(no event selected)";
+                document.getElementById("detail-raw").textContent = "(no event selected)";
+                document.getElementById("detail-related").innerHTML = `<div class="empty-state">No related events loaded.</div>`;
+                return;
+            }
+            document.getElementById("event-detail-kv").innerHTML = [["event_id", event.event_id], ["event", event.event], ["src", event.src], ["dst", event.dst], ["reset_id", event.reset_id], ["injection_id", event.injection_id], ["epoch", event.epoch], ["source_type", event.source_type]].map(([key, value]) => `<div class="key">${escapeHtml(key)}</div><div>${escapeHtml(value ?? "")}</div>`).join("");
+            document.getElementById("detail-metadata").textContent = pretty(event.metadata);
+            document.getElementById("detail-raw").textContent = pretty(event.raw_event);
+            renderHints("detail-hints", state.trace?.hints || [], "Select Trace or Related to enrich event-level hints.");
+            renderRelated();
+        }
+        async function loadTrace(eventId) {
+            if (!eventId) return;
             try {
-                await postJson("/inject/agent-c", { worm_level: level });
+                const payload = await fetchJson(`/api/trace/${encodeURIComponent(eventId)}`);
+                state.trace = payload;
+                document.getElementById("trace-scope-meta").textContent = `trace: ${payload.scope_reason || "loaded"}`;
+                document.getElementById("detail-trace").innerHTML = `
+                    <div class="small">scope: ${escapeHtml(payload.scope_reason || "-")} | confidence=${escapeHtml(payload.scope_confidence ?? "-")}</div>
+                    <div style="margin-top:8px;" class="detail-block">${escapeHtml(pretty(payload.compact_chain || []))}</div>
+                    <div style="margin-top:8px;">${renderTraceTree(payload.tree || [])}</div>
+                `;
+                renderHints("detail-hints", payload.hints || [], "No trace-specific hints.");
             } catch (error) {
-                addClientError(`inject failure: ${error.message}`);
+                addError(`trace lookup failed: ${error.message}`);
             }
         }
-
-        async function quarantine() {
+        async function loadRelated(eventId) {
+            if (!eventId) return;
             try {
-                await postJson("/quarantine/agent-c", {});
+                state.related = await fetchJson(`/api/related/${encodeURIComponent(eventId)}`);
+                renderRelated();
             } catch (error) {
-                addClientError(`quarantine failure: ${error.message}`);
+                addError(`related lookup failed: ${error.message}`);
             }
         }
-
-        async function resetAll() {
+        function openInvestigation() {
+            if (!state.selectedEvent) return;
+            const panel = document.getElementById("investigation-panel");
+            const trace = state.trace || {};
+            const related = state.related || { groups: {} };
+            const relatedCounts = Object.entries(related.summary || {}).map(([key, count]) => `<div>${escapeHtml(key)}: ${escapeHtml(count)}</div>`).join("");
+            const traceTimeline = (trace.timeline || []).map((event) => `
+                <tr>
+                    <td>${escapeHtml(event.ts || "-")}</td>
+                    <td>${escapeHtml(event.event || "")}</td>
+                    <td>${escapeHtml(`${event.src || "?"} -> ${event.dst || "?"}`)}</td>
+                    <td>${escapeHtml(event.attack_type || "(empty)")}</td>
+                    <td>${escapeHtml(event.mutation_v ?? "-")}</td>
+                    <td>${escapeHtml(event.state_after || event.event || "-")}</td>
+                </tr>
+            `).join("");
+            state.investigation = {
+                root_event_id: state.selectedEvent.event_id,
+                generated_at: new Date().toISOString(),
+                trace,
+                related,
+            };
+            document.getElementById("investigation-body").innerHTML = `
+                <div class="investigation-stack">
+                    <div class="investigation-header">
+                        <h3>Overview</h3>
+                        <div class="kv">
+                            <div class="key">root event</div><div>${escapeHtml(state.selectedEvent.event_id)}</div>
+                            <div class="key">injection_id</div><div>${escapeHtml(state.selectedEvent.injection_id || "(empty)")}</div>
+                            <div class="key">attack_type</div><div>${escapeHtml(state.selectedEvent.attack_type || "(empty)")}</div>
+                            <div class="key">time window</div><div>${escapeHtml(trace.timeline?.[0]?.ts || "-")} -> ${escapeHtml(trace.timeline?.[trace.timeline.length - 1]?.ts || "-")}</div>
+                            <div class="key">involved agents</div><div>${escapeHtml((trace.summary?.involved_agents || []).join(", ") || "(none)")}</div>
+                            <div class="key">total related events</div><div>${escapeHtml(trace.summary?.total_events ?? 0)}</div>
+                            <div class="key">terminal outcome</div><div>${escapeHtml(trace.summary?.terminal_outcome || "(missing)")}</div>
+                        </div>
+                    </div>
+                    <div class="investigation-section">
+                        <h3>Chain</h3>
+                        ${renderTraceTree(trace.tree || [])}
+                    </div>
+                    <div class="investigation-section">
+                        <h3>Timeline</h3>
+                        ${traceTimeline ? `<table class="stat-table"><thead><tr><th>ts</th><th>event</th><th>route</th><th>attack</th><th>mutation</th><th>outcome</th></tr></thead><tbody>${traceTimeline}</tbody></table>` : `<div class="empty-state">No trace timeline available.</div>`}
+                    </div>
+                    <div class="investigation-section">
+                        <h3>Related Metadata</h3>
+                        <div class="kv">
+                            <div class="key">reset_id</div><div>${escapeHtml(state.selectedEvent.reset_id || "(empty)")}</div>
+                            <div class="key">epoch</div><div>${escapeHtml(state.selectedEvent.epoch ?? "-")}</div>
+                            <div class="key">source_plane</div><div>${escapeHtml(state.selectedEvent.source_plane || "(empty)")}</div>
+                            <div class="key">payload_hash</div><div>${escapeHtml(state.selectedEvent.payload_hash || "(empty)")}</div>
+                            <div class="key">related groups</div><div>${relatedCounts || "(none)"}</div>
+                        </div>
+                    </div>
+                    <div class="investigation-section">
+                        <h3>Findings</h3>
+                        <div class="pattern-list">
+                            ${(trace.hints || []).map((hint) => `<div class="hint-item ${escapeHtml(hint.severity || "info")}">${escapeHtml(hint.message)}</div>`).join("") || `<div class="empty-state">No deterministic findings generated for this investigation.</div>`}
+                            <div class="hint-item">Highest mutation version seen: ${escapeHtml(trace.summary?.max_mutation_v ?? "-")}</div>
+                            <div class="hint-item">Branch splits detected: ${escapeHtml(trace.summary?.branch_splits ?? 0)}</div>
+                            <div class="hint-item">Unresolved attempts: ${escapeHtml((trace.unresolved_attempts || []).length)}</div>
+                        </div>
+                    </div>
+                    <div class="investigation-section">
+                        <h3>Notes</h3>
+                        <div class="empty-state">Analyst notes placeholder. Case management is not wired yet.</div>
+                    </div>
+                </div>
+            `;
+            panel.style.display = "block";
+        }
+        function closeInvestigation() {
+            document.getElementById("investigation-panel").style.display = "none";
+        }
+        async function refreshLive() {
+            if (state.livePaused) return;
             try {
-                await postJson("/reset", {});
+                const filter = document.getElementById("live-filter").value.trim();
+                const payload = await fetchJson(`/api/live?after_id=${state.live.latest_id || 0}&limit=120&q=${encodeURIComponent(filter)}`);
+                state.live.latest_id = payload.latest_id || state.live.latest_id;
+                state.live.metrics = payload.metrics || {};
+                if ((payload.events || []).length) state.live.events = state.live.events.concat(payload.events).slice(-300);
+                renderLive();
+                renderStatus();
             } catch (error) {
-                addClientError(`reset failure: ${error.message}`);
+                addError(`live refresh failed: ${error.message}`);
+                setChip("stream-chip", "live: error", "bad");
             }
         }
-
-        function dumpLogs() {
-            window.open(`${API}/logs/dump`, "_blank", "noopener,noreferrer");
+        function renderLive() {
+            const metrics = state.live.metrics || {};
+            setChip("stream-chip", state.livePaused ? "live: paused" : "live: streaming", state.livePaused ? "warn" : "good");
+            document.getElementById("live-metrics").innerHTML = [["events/sec", metrics.events_per_sec ?? 0], ["infections", metrics.infections ?? 0], ["blocked", metrics.blocked ?? 0], ["heartbeat", metrics.heartbeat ?? 0], ["last reset_id", metrics.last_reset_id || "-"]].map(([label, value]) => `<div class="metric"><div class="label">${escapeHtml(label)}</div><div class="value">${escapeHtml(value)}</div></div>`).join("");
+            const stream = document.getElementById("live-stream");
+            stream.innerHTML = state.live.events.slice().reverse().map((event) => `<div class="live-item"><div>${escapeHtml(event.ts)}</div><div class="code-inline">${escapeHtml(event.event)}</div><div>${escapeHtml(`${event.src || "?"} -> ${event.dst || "?"}`)} | ${escapeHtml(event.attack_type || "")} | reset=${escapeHtml(event.reset_id || "")}</div></div>`).join("");
+            if (state.liveScrollLock) stream.scrollTop = 0;
+        }
+        function renderStatus() {
+            const health = state.health || {};
+            setChip("api-chip", "api: connected", "good");
+            setChip("last-ts-chip", `last event: ${health.last_event_ts || "-"}`);
+            setChip("reset-chip", `reset: ${state.live.metrics?.last_reset_id || state.control?.analytics?.run_integrity?.reset_id || "-"}`);
+            const parseErrors = health.parse_errors ?? state.live.metrics?.parse_errors ?? 0;
+            setChip("parse-chip", `parse errors: ${parseErrors}`, parseErrors ? "warn" : "");
+        }
+        function pollDelay(baseMs, hiddenFactor = 2) {
+            return document.hidden ? baseMs * hiddenFactor : baseMs;
+        }
+        function scheduleControlPoll(delayMs) {
+            if (state.controlPoll.timer) clearTimeout(state.controlPoll.timer);
+            state.controlPoll.timer = setTimeout(runControlPoll, delayMs ?? pollDelay(state.controlPoll.delayMs));
+        }
+        function scheduleLivePoll(delayMs) {
+            if (state.livePoll.timer) clearTimeout(state.livePoll.timer);
+            state.livePoll.timer = setTimeout(runLivePoll, delayMs ?? pollDelay(state.livePoll.delayMs, 3));
+        }
+        async function runControlPoll() {
+            if (state.controlPoll.busy) {
+                scheduleControlPoll();
+                return;
+            }
+            state.controlPoll.busy = true;
+            try {
+                await loadControl();
+                state.controlPoll.delayMs = 4000;
+            } catch (error) {
+                addError(`control refresh failed: ${error.message}`);
+                setChip("api-chip", "api: degraded", "warn");
+                state.controlPoll.delayMs = Math.min(state.controlPoll.delayMs * 2, 20000);
+            } finally {
+                state.controlPoll.busy = false;
+                scheduleControlPoll();
+            }
+        }
+        async function runLivePoll() {
+            if (state.livePoll.busy) {
+                scheduleLivePoll();
+                return;
+            }
+            if (state.livePaused) {
+                scheduleLivePoll(3000);
+                return;
+            }
+            state.livePoll.busy = true;
+            try {
+                await refreshLive();
+                state.livePoll.delayMs = state.activeView === "live" ? 1500 : 4000;
+            } catch (error) {
+                addError(`live poll failed: ${error.message}`);
+                setChip("stream-chip", "live: reconnecting", "warn");
+                state.livePoll.delayMs = Math.min(state.livePoll.delayMs * 2, 20000);
+            } finally {
+                state.livePoll.busy = false;
+                scheduleLivePoll();
+            }
+        }
+        async function inject() { const result = await postJson("/inject/agent-c", { worm_level: document.getElementById("worm-level").value }); document.getElementById("control-status").textContent = `inject issued :: ${pretty(result)}`; await Promise.all([loadControl(), refreshLive()]); }
+        async function quarantine() { const result = await postJson("/quarantine/agent-c", {}); document.getElementById("control-status").textContent = `quarantine issued :: ${pretty(result)}`; await Promise.all([loadControl(), refreshLive()]); }
+        async function hardReset() { const result = await postJson("/reset", {}); document.getElementById("control-status").textContent = `reset result :: ${pretty(result)}`; await Promise.all([loadControl(), refreshLive()]); }
+        async function dumpLogs() {
+            const response = await fetch(`${API}/logs/dump`);
+            if (!response.ok) throw new Error(`log dump failed with ${response.status}`);
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            const match = (response.headers.get("content-disposition") || "").match(/filename="([^"]+)"/);
+            link.href = url;
+            link.download = match ? match[1] : "epidemic_snapshot.zip";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
         }
 
-        document.getElementById("inject-btn").addEventListener("click", inject);
-        document.getElementById("quarantine-btn").addEventListener("click", quarantine);
-        document.getElementById("reset-btn").addEventListener("click", resetAll);
-        document.getElementById("dump-btn").addEventListener("click", dumpLogs);
+        document.querySelectorAll(".nav button").forEach((button) => button.addEventListener("click", () => switchView(button.dataset.view)));
+        document.querySelectorAll("[data-search-tab]").forEach((button) => button.addEventListener("click", () => switchSearchTab(button.dataset.searchTab).catch((error) => addError(error.message))));
+        document.getElementById("inject-btn").addEventListener("click", () => inject().catch((error) => addError(error.message)));
+        document.getElementById("quarantine-btn").addEventListener("click", () => quarantine().catch((error) => addError(error.message)));
+        document.getElementById("reset-btn").addEventListener("click", () => hardReset().catch((error) => addError(error.message)));
+        document.getElementById("dump-btn").addEventListener("click", () => dumpLogs().catch((error) => addError(error.message)));
+        document.getElementById("run-search-btn").addEventListener("click", () => runSearch().catch((error) => addError(error.message)));
+        document.getElementById("clear-search-btn").addEventListener("click", () => { document.getElementById("search-query").value = ""; document.getElementById("search-mode").value = "structured"; document.getElementById("time-range").value = "all"; runSearch().catch((error) => addError(error.message)); });
+        document.getElementById("search-query").addEventListener("keydown", (event) => {
+            if (event.key === "Enter") runSearch().catch((error) => addError(error.message));
+        });
+        document.getElementById("export-search-btn").addEventListener("click", () => {
+            const blob = new Blob([JSON.stringify(state.search.events || [], null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "search_results.json";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        });
+        document.getElementById("live-apply-btn").addEventListener("click", () => { state.live.latest_id = 0; state.live.events = []; refreshLive().catch((error) => addError(error.message)); scheduleLivePoll(250); });
+        document.getElementById("live-pause-btn").addEventListener("click", (event) => { state.livePaused = !state.livePaused; event.target.textContent = state.livePaused ? "resume" : "pause"; renderLive(); });
+        document.getElementById("live-lock-btn").addEventListener("click", (event) => { state.liveScrollLock = !state.liveScrollLock; event.target.textContent = `scroll lock: ${state.liveScrollLock ? "on" : "off"}`; });
+        document.getElementById("live-clear-btn").addEventListener("click", () => { state.live.events = []; renderLive(); });
+        document.getElementById("pivot-src-btn").addEventListener("click", () => { if (!state.selectedEvent?.src) return; setStructuredQuery(`src=${state.selectedEvent.src}`); switchView("search"); runSearch().catch((error) => addError(error.message)); });
+        document.getElementById("pivot-dst-btn").addEventListener("click", () => { if (!state.selectedEvent?.dst) return; setStructuredQuery(`dst=${state.selectedEvent.dst}`); switchView("search"); runSearch().catch((error) => addError(error.message)); });
+        document.getElementById("pivot-attack-btn").addEventListener("click", () => { if (!state.selectedEvent?.attack_type) return; setStructuredQuery(`attack_type=${state.selectedEvent.attack_type}`); switchView("search"); runSearch().catch((error) => addError(error.message)); });
+        document.getElementById("pivot-injection-btn").addEventListener("click", () => { if (!state.selectedEvent?.injection_id) return; setStructuredQuery(`injection_id=${quoteQueryValue(state.selectedEvent.injection_id)}`); switchView("search"); runSearch().catch((error) => addError(error.message)); });
+        document.getElementById("pivot-reset-btn").addEventListener("click", () => { if (!state.selectedEvent?.reset_id) return; setStructuredQuery(`reset_id=${quoteQueryValue(state.selectedEvent.reset_id)}`); switchView("search"); runSearch().catch((error) => addError(error.message)); });
+        document.getElementById("pivot-trace-btn").addEventListener("click", async () => {
+            if (!state.selectedEvent?.event_id) return;
+            await Promise.all([
+                loadTrace(state.selectedEvent.event_id),
+                loadRelated(state.selectedEvent.event_id),
+            ]);
+            openInvestigation();
+        });
+        document.getElementById("show-related-btn").addEventListener("click", () => { if (!state.selectedEvent?.event_id) return; loadRelated(state.selectedEvent.event_id).catch((error) => addError(error.message)); });
+        document.getElementById("open-investigation-btn").addEventListener("click", () => openInvestigation());
+        document.getElementById("investigation-close-btn").addEventListener("click", () => closeInvestigation());
+        document.getElementById("investigation-export-btn").addEventListener("click", () => {
+            if (!state.investigation) return;
+            const blob = new Blob([JSON.stringify(state.investigation, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `investigation_${state.investigation.root_event_id || "trace"}.json`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        });
+        document.getElementById("copy-json-btn").addEventListener("click", async () => { if (!state.selectedEvent) return; await navigator.clipboard.writeText(JSON.stringify(state.selectedEvent.raw_event || state.selectedEvent, null, 2)); });
+        document.querySelectorAll("[data-quick-filter]").forEach((button) => button.addEventListener("click", () => {
+            const token = button.dataset.quickFilter;
+            if (token === "current_reset") {
+                const resetId = state.control?.analytics?.run_integrity?.reset_id || state.live.metrics?.last_reset_id;
+                if (!resetId) return;
+                addScopedToken(`reset_id=${quoteQueryValue(resetId)}`);
+                return;
+            }
+            if (token === "current_run") {
+                const epoch = state.control?.analytics?.run_integrity?.epoch;
+                if (epoch === undefined || epoch === null) return;
+                addScopedToken(`epoch=${epoch}`);
+                return;
+            }
+            toggleQueryToken(token);
+        }));
+        document.addEventListener("visibilitychange", () => {
+            scheduleControlPoll(500);
+            scheduleLivePoll(500);
+        });
 
-        updateClock();
-        renderTopology();
-        setInterval(updateClock, 1000);
-
-        loadInitialEvents()
-            .then(() => {
-                setApiStatus(true, "API: connected");
-            })
-            .catch((error) => {
-                setApiStatus(false, `API: ${error.message}`);
-                addClientError(`initial load failure: ${error.message}`);
-            });
-
-        setInterval(pollNewEvents, 1500);
+        async function bootstrap() {
+            try {
+                await Promise.all([loadControl(), runSearch()]);
+                await refreshLive();
+            } catch (error) {
+                addError(`bootstrap failed: ${error.message}`);
+                setChip("api-chip", "api: error", "bad");
+            }
+        }
+        bootstrap();
+        scheduleControlPoll(4000);
+        scheduleLivePoll(2000);
     </script>
 </body>
 </html>

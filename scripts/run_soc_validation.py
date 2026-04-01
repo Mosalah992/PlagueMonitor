@@ -101,18 +101,35 @@ def archive_existing_logs():
             source.unlink()
 
 
-def classify_run(run_index, level, scheduled_at, injection_response, events):
-    counts = Counter(str(event.get("event", "")) for event in events)
+def classify_run(run_index, level, scheduled_at, reset_response, injection_response, events):
+    epoch = int(reset_response.get("epoch", 0) or 0)
+    reset_id = str(reset_response.get("reset_id", "") or "")
+
+    def event_in_scope(event):
+        metadata = event.get("metadata")
+        if not isinstance(metadata, dict):
+            return False
+        try:
+            event_epoch = int(metadata.get("epoch", epoch) or epoch)
+        except (TypeError, ValueError):
+            return False
+        event_reset_id = str(metadata.get("reset_id", "") or "")
+        return event_epoch == epoch and event_reset_id == reset_id
+
+    scoped_events = [event for event in events if event_in_scope(event)]
+    counts = Counter(str(event.get("event", "")) for event in scoped_events)
     reached_b = any(
-        str(event.get("src")) == "agent-c" and str(event.get("dst")) == "agent-b"
-        for event in events
+        str(event.get("event")) in {"INFECTION_ATTEMPT", "INFECTION_SUCCESSFUL", "INFECTION_BLOCKED"}
+        and str(event.get("src")) == "agent-c" and str(event.get("dst")) == "agent-b"
+        for event in scoped_events
     )
     reached_a = any(
-        str(event.get("src")) == "agent-b" and str(event.get("dst")) == "agent-a"
-        for event in events
+        str(event.get("event")) in {"INFECTION_ATTEMPT", "INFECTION_SUCCESSFUL", "INFECTION_BLOCKED"}
+        and str(event.get("src")) == "agent-b" and str(event.get("dst")) == "agent-a"
+        for event in scoped_events
     )
     state_after = {}
-    for event in events:
+    for event in scoped_events:
         dst = str(event.get("dst", ""))
         if dst in {"agent-a", "agent-b", "agent-c"}:
             state = event.get("state_after")
@@ -122,8 +139,14 @@ def classify_run(run_index, level, scheduled_at, injection_response, events):
         "run": run_index,
         "scheduled_heartbeat_utc": scheduled_at.isoformat(),
         "worm_level": level,
+        "epoch": epoch,
+        "reset_id": reset_id,
+        "barrier_complete": bool(reset_response.get("barrier_complete")),
+        "reset_bleed_through_detected": bool(reset_response.get("bleed_through_detected")),
+        "reset_acked_agents": list(reset_response.get("acknowledged_agents", [])),
         "injection_id": injection_response.get("injection_id"),
-        "event_count": len(events),
+        "event_count": len(scoped_events),
+        "raw_event_count": len(events),
         "counts": dict(counts),
         "reached_agent_b": reached_b,
         "reached_agent_a": reached_a,
@@ -132,7 +155,7 @@ def classify_run(run_index, level, scheduled_at, injection_response, events):
         "heartbeat_events": counts["HEARTBEAT"],
         "final_agent_states": state_after,
         "sample_payload": next(
-            (event.get("payload") for event in events if event.get("payload")),
+            (event.get("payload") for event in scoped_events if event.get("payload")),
             "",
         ),
     }
@@ -149,6 +172,8 @@ def build_report(test_runs, dashboard_order_check, dashboard_html_length, compos
         run["run"] for run in test_runs
         if (not run["reached_agent_b"] and run["reached_agent_a"])
     ]
+    barrier_failures = [run["run"] for run in test_runs if not run["barrier_complete"]]
+    bleed_runs = [run["run"] for run in test_runs if run["reset_bleed_through_detected"]]
     total_errors = [
         line for line in compose_logs.splitlines()
         if any(token in line for token in ("Error", "Traceback", "Exception", "validation error"))
@@ -177,6 +202,8 @@ def build_report(test_runs, dashboard_order_check, dashboard_html_length, compos
     lines.append("Executive summary")
     lines.append(f"- Runs reaching agent-b: {runs_reaching_b}/{RUN_COUNT}")
     lines.append(f"- Runs reaching agent-a: {runs_reaching_a}/{RUN_COUNT}")
+    lines.append(f"- Reset barrier failures: {len(barrier_failures)}")
+    lines.append(f"- Reset bleed-through flags: {len(bleed_runs)}")
     lines.append(f"- Total INFECTION_ATTEMPT events: {total_counts['INFECTION_ATTEMPT']}")
     lines.append(f"- Total INFECTION_SUCCESSFUL events: {total_counts['INFECTION_SUCCESSFUL']}")
     lines.append(f"- Total INFECTION_BLOCKED events: {total_counts['INFECTION_BLOCKED']}")
@@ -188,11 +215,27 @@ def build_report(test_runs, dashboard_order_check, dashboard_html_length, compos
         lines.append("- End-to-end propagation remained functional across all scheduled windows.")
     else:
         lines.append("- Propagation to agent-a was intermittent and should be reviewed.")
+    if barrier_failures:
+        lines.append(
+            "- Hard reset barrier did not complete in windows "
+            + ", ".join(str(run_id) for run_id in barrier_failures)
+            + "."
+        )
+    else:
+        lines.append("- Hard reset barrier completed in every window.")
+    if bleed_runs:
+        lines.append(
+            "- Reset endpoint still reported bleed-through in windows "
+            + ", ".join(str(run_id) for run_id in bleed_runs)
+            + "."
+        )
     if residual_runs:
         lines.append(
             "- Reset is not a hard quiescence barrier. Residual downstream events were still observed in "
             f"windows {', '.join(str(run_id) for run_id in residual_runs)} after reset."
         )
+    else:
+        lines.append("- No residual post-reset downstream events were observed across run boundaries.")
     if total_errors:
         lines.append("- Runtime logs still contain error indicators. Review compose_logs.txt for exact lines.")
     else:
@@ -208,7 +251,9 @@ def build_report(test_runs, dashboard_order_check, dashboard_html_length, compos
             f"- Run {run['run']:02d} | scheduled={run['scheduled_heartbeat_utc']} | "
             f"level={run['worm_level']} | events={run['event_count']} | "
             f"success={run['infection_successful']} | blocked={run['infection_blocked']} | "
-            f"heartbeats={run['heartbeat_events']} | reach_b={run['reached_agent_b']} | reach_a={run['reached_agent_a']}"
+            f"heartbeats={run['heartbeat_events']} | reach_b={run['reached_agent_b']} | "
+            f"reach_a={run['reached_agent_a']} | barrier={run['barrier_complete']} | "
+            f"bleed={run['reset_bleed_through_detected']}"
         )
     lines.append("")
     lines.append("SOC assessment")
@@ -216,8 +261,7 @@ def build_report(test_runs, dashboard_order_check, dashboard_html_length, compos
     lines.append("- Data plane: healthy. Propagation and state transitions were visible in the event stream.")
     lines.append("- Observability: improved. Dashboard now consumes descending event order, renders full message bodies, and surfaces parsed metadata.")
     lines.append("- Residual risk: aggressive autonomous propagation can generate dense event bursts, so analysts should expect rapid event growth during successful infections.")
-    if residual_runs:
-        lines.append("- Residual risk: reset acknowledgement is asynchronous. A strict test harness should wait for per-agent post-reset heartbeats before treating the next window as isolated.")
+    lines.append("- Validation note: per-run findings are now scoped by epoch/reset_id rather than database arrival order, which removes logger-latency contamination between windows.")
     lines.append("")
     lines.append("Artifacts")
     for artifact in sorted(ARTIFACT_DIR.iterdir()):
@@ -299,7 +343,7 @@ def main():
             json.dumps(run_artifact, indent=2),
             encoding="utf-8",
         )
-        test_runs.append(classify_run(index, level, scheduled_at, injection_response, run_events))
+        test_runs.append(classify_run(index, level, scheduled_at, reset_response, injection_response, run_events))
 
     final_events = fetch_events(order="desc", limit=300)
     (ARTIFACT_DIR / "events_final.json").write_text(

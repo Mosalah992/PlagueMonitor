@@ -99,6 +99,8 @@ class AgentBase:
         self.state = AgentState.HEALTHY
         self.payload: Optional[str] = None
         self.last_message_metadata: Dict[str, Any] = {}
+        self.current_epoch: int = 0
+        self.last_reset_id: str = ""
         self.infection_mode = False  # Behavioral flag: are we actively spreading?
         self.infection_history: List[InfectionRecord] = []
         self.current_attack_strength: float = 0.5
@@ -144,6 +146,8 @@ class AgentBase:
             os.environ.get("HEARTBEAT_INTERVAL_S", "1800")
         )
         self.last_heartbeat_at: float = 0.0
+        self.control_sync_interval_s: float = 0.25
+        self.last_control_sync_at: float = 0.0
         
         # Redis and HTTP clients
         if Redis is None:
@@ -207,10 +211,98 @@ class AgentBase:
             infection_mode=self.infection_mode,
             mutation_v=self.mutation_version,
             metadata={
+                "epoch": self.current_epoch,
+                "reset_id": self.last_reset_id,
                 "neighbors": NETWORK_GRAPH.get(self.agent_id, []),
                 "last_message_metadata": self.last_message_metadata,
             },
         )
+
+    async def _get_control_plane_epoch(self) -> Tuple[int, str]:
+        epoch_raw = await self.redis.get("simulation_epoch")
+        reset_id_raw = await self.redis.get("current_reset_id")
+        try:
+            epoch = int(epoch_raw or self.current_epoch)
+        except (TypeError, ValueError):
+            epoch = self.current_epoch
+        return epoch, str(reset_id_raw or self.last_reset_id)
+
+    async def _apply_reset(
+        self,
+        epoch: int,
+        reset_id: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        *,
+        emit_ack: bool = True,
+    ) -> None:
+        self.current_epoch = epoch
+        self.last_reset_id = reset_id
+        self.state = AgentState.HEALTHY
+        self.infection_mode = False
+        self.memory = []
+        self.payload = None
+        self.infection_history = []
+        self.last_message_metadata = dict(metadata or {})
+        self.current_attack_strength = 0.5
+        self.immunity_by_type = {}
+        self.mutation_version = 0
+        self.mutation_chain = []
+        self.last_propagation = 0
+        self.broadcast_queue.clear()
+        self.message_queue.clear()
+        print(f"[{self.agent_id}] RESET_APPLIED epoch={epoch} reset_id={reset_id}")
+        if emit_ack:
+            await self._emit_event(
+                "RESET_ACK",
+                src=self.agent_id,
+                dst="orchestrator",
+                state_after=self.state.value,
+                metadata={
+                    "epoch": self.current_epoch,
+                    "reset_id": self.last_reset_id,
+                },
+            )
+        self.last_heartbeat_at = 0.0
+        await self._emit_heartbeat()
+
+    async def _sync_control_plane(self, force: bool = False) -> bool:
+        now = time.time()
+        if not force and (now - self.last_control_sync_at) < self.control_sync_interval_s:
+            return False
+        self.last_control_sync_at = now
+        control_epoch, control_reset_id = await self._get_control_plane_epoch()
+        if (
+            control_epoch > self.current_epoch
+            or (
+                control_reset_id
+                and control_reset_id != self.last_reset_id
+                and control_epoch >= self.current_epoch
+            )
+        ):
+            await self._emit_event(
+                "CONTROL_RESYNC",
+                src=self.agent_id,
+                dst="orchestrator",
+                state_after=self.state.value,
+                metadata={
+                    "agent_epoch": self.current_epoch,
+                    "control_epoch": control_epoch,
+                    "agent_reset_id": self.last_reset_id,
+                    "control_reset_id": control_reset_id,
+                },
+            )
+            await self._apply_reset(
+                control_epoch,
+                control_reset_id,
+                {
+                    "epoch": control_epoch,
+                    "reset_id": control_reset_id,
+                    "source_plane": "control-sync",
+                },
+                emit_ack=True,
+            )
+            return True
+        return False
 
     # ════════════════════════════════════════════════════════════════════════════
     # TEMPORAL SIMULATION LAYER
@@ -433,6 +525,9 @@ class AgentBase:
         state_before = self.state.value
         hop_count = int(message.metadata.get("hop_count", 0) or 0)
         injection_id = message.metadata.get("injection_id", "")
+        attempt_id = str(message.metadata.get("attempt_id") or injection_id or message.id)
+        message_epoch = int(message.metadata.get("epoch", self.current_epoch) or self.current_epoch)
+        message_reset_id = str(message.metadata.get("reset_id", self.last_reset_id) or self.last_reset_id)
         
         print(f"[{self.agent_id}] ╔ Processing message from {message.src}")
         
@@ -440,6 +535,34 @@ class AgentBase:
         # PHASE 0: TEMPORAL DELAY (Realistic processing time)
         # ─────────────────────────────────────────────────────────
         await self.inject_processing_delay()
+        control_epoch, control_reset_id = await self._get_control_plane_epoch()
+        if (
+            message_epoch < control_epoch
+            or (control_reset_id and message_reset_id and message_reset_id != control_reset_id)
+        ):
+            await self._emit_event(
+                "STALE_EVENT_DROPPED",
+                src=message.src,
+                dst=self.agent_id,
+                payload=message.payload,
+                state_after=self.state.value,
+                metadata={
+                    **message.metadata,
+                    "attempt_id": attempt_id,
+                    "current_epoch": self.current_epoch,
+                    "control_epoch": control_epoch,
+                    "stale_epoch": message_epoch,
+                    "reset_id": self.last_reset_id,
+                    "message_reset_id": message_reset_id,
+                    "control_reset_id": control_reset_id,
+                    "reason": "post_delay_control_mismatch",
+                },
+            )
+            print(
+                f"[{self.agent_id}] Dropped stale message attempt_id={attempt_id} "
+                f"message_epoch={message_epoch} control_epoch={control_epoch}"
+            )
+            return
         
         # ─────────────────────────────────────────────────────────
         # PHASE 1: EXTRACT ATTACK PARAMETERS
@@ -654,6 +777,27 @@ class AgentBase:
         
         if self.state != AgentState.INFECTED:
             return  # Only infected agents spread
+
+        control_epoch, control_reset_id = await self._get_control_plane_epoch()
+        message_epoch = int(self.last_message_metadata.get("epoch", self.current_epoch) or self.current_epoch)
+        if control_epoch != self.current_epoch or message_epoch != control_epoch:
+            await self._emit_event(
+                "PROPAGATION_SUPPRESSED",
+                src=self.agent_id,
+                dst=self.agent_id,
+                state_after=self.state.value,
+                metadata={
+                    "reason": "epoch_mismatch",
+                    "agent_epoch": self.current_epoch,
+                    "message_epoch": message_epoch,
+                    "control_epoch": control_epoch,
+                    "reset_id": self.last_reset_id,
+                    "control_reset_id": control_reset_id,
+                },
+            )
+            self.infection_mode = False
+            self.last_propagation = time.time()
+            return
         
         print(f"[{self.agent_id}] 🦠 Broadcasting infection...")
         
@@ -697,17 +841,22 @@ class AgentBase:
         for target in neighbors:
             # Slight attack strength reduction as payload propagates (realistic decay)
             attack_strength = self.current_attack_strength * random.uniform(0.8, 1.0)
+            attempt_id = os.urandom(8).hex()
             event_metadata = {
                 "attack_type": "PI-DIRECT",
                 "attack_strength": attack_strength,
                 "source_infection": True,
                 "mutation_v": self.mutation_version,
-                "original_source": "orchestrator",
+                "original_source": self.last_message_metadata.get("original_source", self.last_message_metadata.get("src", "orchestrator")),
                 "hop_count": previous_hop_count + 1,
+                "attempt_id": attempt_id,
+                "injection_id": self.last_message_metadata.get("injection_id", attempt_id),
+                "epoch": self.current_epoch,
+                "reset_id": self.last_reset_id,
             }
             
             msg = {
-                "id": os.urandom(8).hex(),
+                "id": attempt_id,
                 "src": self.agent_id,
                 "dst": target,
                 "event_type": "infection_attempt",  # HIGH priority event type
@@ -820,6 +969,10 @@ class AgentBase:
         
         try:
             while True:
+                resynced = await self._sync_control_plane()
+                if resynced:
+                    await asyncio.sleep(0.05)
+                    continue
                 # ─────────────────────────────────────────────────────────
                 # PHASE 1: RECEIVE & HANDLE INCOMING MESSAGES
                 # ─────────────────────────────────────────────────────────
@@ -838,22 +991,90 @@ class AgentBase:
                         print(f"[{self.agent_id}] Parsed metadata: {payload.metadata}")
                         
                         # Handle control commands from orchestrator
-                        if payload.event_type == "quarantine":
-                            self.state = AgentState.QUARANTINED
-                            self.infection_mode = False
-                            print(f"[{self.agent_id}] ⛔ QUARANTINED")
-                        
-                        elif payload.event_type == "reset":
+                        message_epoch = int(payload.metadata.get("epoch", self.current_epoch) or self.current_epoch)
+                        message_reset_id = str(payload.metadata.get("reset_id", self.last_reset_id) or self.last_reset_id)
+                        if payload.event_type == "reset":
+                            if message_epoch != self.current_epoch or message_reset_id != self.last_reset_id:
+                                await self._apply_reset(
+                                    message_epoch,
+                                    message_reset_id,
+                                    payload.metadata,
+                                    emit_ack=True,
+                                )
+                            else:
+                                await self._emit_event(
+                                    "RESET_ACK",
+                                    src=self.agent_id,
+                                    dst="orchestrator",
+                                    state_after=self.state.value,
+                                    metadata={
+                                        "epoch": self.current_epoch,
+                                        "reset_id": self.last_reset_id,
+                                        "duplicate": True,
+                                    },
+                                )
+                                self.last_heartbeat_at = 0.0
+                                await self._emit_heartbeat()
+                            continue
+                            self.current_epoch = message_epoch
+                            self.last_reset_id = str(payload.metadata.get("reset_id", ""))
                             self.state = AgentState.HEALTHY
                             self.infection_mode = False
                             self.memory = []
                             self.payload = None
                             self.infection_history = []
+                            self.last_message_metadata = dict(payload.metadata)
+                            self.current_attack_strength = 0.5
+                            self.immunity_by_type = {}
+                            self.mutation_version = 0
+                            self.mutation_chain = []
+                            self.last_propagation = 0
                             print(f"[{self.agent_id}] ↻ RESET to HEALTHY")
+                            await self._emit_event(
+                                "RESET_ACK",
+                                src=self.agent_id,
+                                dst="orchestrator",
+                                state_after=self.state.value,
+                                metadata={
+                                    "epoch": self.current_epoch,
+                                    "reset_id": self.last_reset_id,
+                                },
+                            )
+                            self.last_heartbeat_at = 0.0
+                            await self._emit_heartbeat()
+                        
+                        elif message_epoch < self.current_epoch:
+                            await self._emit_event(
+                                "STALE_EVENT_DROPPED",
+                                src=payload.src,
+                                dst=self.agent_id,
+                                payload=payload.payload,
+                                state_after=self.state.value,
+                                metadata={
+                                    **payload.metadata,
+                                    "current_epoch": self.current_epoch,
+                                    "stale_epoch": message_epoch,
+                                    "reset_id": self.last_reset_id,
+                                },
+                            )
+                            print(
+                                f"[{self.agent_id}] Ignored stale event epoch={message_epoch} "
+                                f"current_epoch={self.current_epoch}"
+                            )
+                        
+                        elif payload.event_type == "quarantine":
+                            self.current_epoch = max(self.current_epoch, message_epoch)
+                            self.last_reset_id = message_reset_id
+                            self.state = AgentState.QUARANTINED
+                            self.infection_mode = False
+                            print(f"[{self.agent_id}] ⛔ QUARANTINED")
                         
                         # Handle infection attempts (highest priority)
                         elif payload.event_type == "infection_attempt" or payload.event_type == "message":
+                            self.current_epoch = max(self.current_epoch, message_epoch)
+                            self.last_reset_id = message_reset_id
                             await self.handle_message(payload)
+                            await self._sync_control_plane(force=True)
                     
                     except json.JSONDecodeError as e:
                         print(f"[{self.agent_id}] JSON parse error: {e} | raw={msg.get('data')}")
