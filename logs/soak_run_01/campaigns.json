@@ -1,0 +1,31 @@
+{
+  "structured_query": "",
+  "warnings": [],
+  "truncated": false,
+  "campaigns": [
+    {
+      "campaign_id": "cmp_1775155524_agent-c",
+      "objective": "MAXIMIZE_SUCCESS_RATE",
+      "start_time": "1775155829.2503932",
+      "end_time": "1775156703.8300705",
+      "ongoing": false,
+      "participating_agents": [
+        "agent-a",
+        "agent-b",
+        "agent-c"
+      ],
+      "total_events": 325,
+      "total_attempts": 300,
+      "total_successes": 3,
+      "total_blocks": 2,
+      "final_outcome": "unknown",
+      "highest_hop_reached": 2,
+      "deepest_target_reached": "agent-a",
+      "deepest_target_depth": 3
+    }
+  ],
+  "summary": {
+    "campaign_count": 1,
+    "top_campaign_id": "cmp_1775155524_agent-c"
+  }
+}

@@ -1,0 +1,252 @@
+{
+  "knowledge_source": "Red Teaming AI",
+  "knowledge_version": "book_extract_v2_multi_source",
+  "source_path": "agents\\shared\\data\\agent_c_enrichment_sources.json",
+  "source_manifest": [
+    {
+      "kind": "text",
+      "path": "E:\\CODE PROKECTS\\PDF parser\\book_extracted\\book_full.txt",
+      "url": "",
+      "label": "red_teaming_ai_full_extract"
+    },
+    {
+      "kind": "text",
+      "path": "E:\\CODE PROKECTS\\PDF parser\\book_extracted\\Enrich1.txt",
+      "url": "",
+      "label": "red_teaming_ai_enrich_1"
+    },
+    {
+      "kind": "text",
+      "path": "E:\\CODE PROKECTS\\PDF parser\\book_extracted\\enrich2.txt",
+      "url": "",
+      "label": "red_teaming_ai_enrich_2"
+    },
+    {
+      "kind": "text",
+      "path": "E:\\CODE PROKECTS\\PDF parser\\book_extracted\\enrich3.txt",
+      "url": "",
+      "label": "red_teaming_ai_enrich_3"
+    },
+    {
+      "kind": "text",
+      "path": "E:\\CODE PROKECTS\\PDF parser\\book_extracted\\enrich4.txt",
+      "url": "",
+      "label": "red_teaming_ai_enrich_4"
+    },
+    {
+      "kind": "git_repo",
+      "path": "",
+      "url": "https://github.com/OWASP/www-project-top-10-for-large-language-model-applications",
+      "label": "owasp_top_10_llm"
+    },
+    {
+      "kind": "git_repo",
+      "path": "",
+      "url": "https://github.com/CyberAlbSecOP/Awesome_GPT_Super_Prompting",
+      "label": "awesome_gpt_super_prompting"
+    },
+    {
+      "kind": "git_repo",
+      "path": "",
+      "url": "https://github.com/Joe-B-Security/awesome-prompt-injection",
+      "label": "awesome_prompt_injection"
+    }
+  ],
+  "source_count": 8,
+  "section_count": 12636,
+  "attack_strategies": {
+    "data_poisoning": {
+      "base_strength": 0.7,
+      "stealth": 0.85,
+      "detection_difficulty": 0.9,
+      "preferred_mutations": [
+        "encoding",
+        "obfuscation"
+      ],
+      "top_techniques": [
+        "training_set_corruption",
+        "roleplay_manipulation",
+        "jailbreak_escalation",
+        "instruction_override"
+      ],
+      "dominant_stage": "training",
+      "dominant_target_surface": "data_pipeline",
+      "knowledge_count": 1428
+    },
+    "evasion": {
+      "base_strength": 0.75,
+      "stealth": 0.8,
+      "detection_difficulty": 0.85,
+      "preferred_mutations": [
+        "obfuscation",
+        "variable_rename"
+      ],
+      "top_techniques": [
+        "adversarial_input_manipulation",
+        "instruction_override",
+        "training_set_corruption",
+        "roleplay_manipulation"
+      ],
+      "dominant_stage": "inference",
+      "dominant_target_surface": "model_input",
+      "knowledge_count": 105
+    },
+    "infrastructure_attack": {
+      "base_strength": 0.7,
+      "stealth": 0.6,
+      "detection_difficulty": 0.65,
+      "preferred_mutations": [
+        "encoding"
+      ],
+      "top_techniques": [
+        "mlops_surface_abuse",
+        "instruction_override",
+        "roleplay_manipulation",
+        "trust_exploitation"
+      ],
+      "dominant_stage": "system",
+      "dominant_target_surface": "infra_stack",
+      "knowledge_count": 546
+    },
+    "social_engineering": {
+      "base_strength": 0.72,
+      "stealth": 0.82,
+      "detection_difficulty": 0.68,
+      "preferred_mutations": [
+        "reframe",
+        "context_wrap",
+        "verbosity_shift"
+      ],
+      "top_techniques": [
+        "trust_exploitation",
+        "roleplay_manipulation",
+        "mlops_surface_abuse",
+        "jailbreak_escalation"
+      ],
+      "dominant_stage": "human_interaction",
+      "dominant_target_surface": "human_operator",
+      "knowledge_count": 155
+    },
+    "prompt_injection": {
+      "base_strength": 0.8,
+      "stealth": 0.7,
+      "detection_difficulty": 0.75,
+      "preferred_mutations": [
+        "reframe",
+        "context_wrap",
+        "verbosity_shift"
+      ],
+      "top_techniques": [
+        "roleplay_manipulation",
+        "prompt_manipulation",
+        "training_set_corruption",
+        "instruction_override"
+      ],
+      "dominant_stage": "inference",
+      "dominant_target_surface": "input_channel",
+      "knowledge_count": 10011
+    },
+    "backdoor": {
+      "base_strength": 0.78,
+      "stealth": 0.92,
+      "detection_difficulty": 0.92,
+      "preferred_mutations": [
+        "encoding",
+        "obfuscation"
+      ],
+      "top_techniques": [
+        "trigger_implantation",
+        "roleplay_manipulation",
+        "instruction_override",
+        "training_set_corruption"
+      ],
+      "dominant_stage": "training",
+      "dominant_target_surface": "model_training",
+      "knowledge_count": 98
+    },
+    "model_extraction": {
+      "base_strength": 0.55,
+      "stealth": 0.9,
+      "detection_difficulty": 0.8,
+      "preferred_mutations": [
+        "verbosity_shift"
+      ],
+      "top_techniques": [
+        "repeated_query_extraction",
+        "instruction_override",
+        "roleplay_manipulation",
+        "mlops_surface_abuse"
+      ],
+      "dominant_stage": "inference",
+      "dominant_target_surface": "api_endpoint",
+      "knowledge_count": 68
+    },
+    "membership_inference": {
+      "base_strength": 0.5,
+      "stealth": 0.95,
+      "detection_difficulty": 0.88,
+      "preferred_mutations": [
+        "verbosity_shift"
+      ],
+      "top_techniques": [
+        "membership_probing",
+        "repeated_query_extraction",
+        "instruction_override",
+        "roleplay_manipulation"
+      ],
+      "dominant_stage": "inference",
+      "dominant_target_surface": "model_output",
+      "knowledge_count": 9
+    },
+    "denial_of_service": {
+      "base_strength": 0.82,
+      "stealth": 0.4,
+      "detection_difficulty": 0.45,
+      "preferred_mutations": [
+        "verbosity_shift",
+        "context_wrap"
+      ],
+      "top_techniques": [
+        "mlops_surface_abuse",
+        "instruction_override",
+        "repeated_query_extraction",
+        "roleplay_manipulation"
+      ],
+      "dominant_stage": "system",
+      "dominant_target_surface": "api_endpoint",
+      "knowledge_count": 216
+    }
+  },
+  "mutation_profiles": {
+    "encoding": {
+      "stealth_modifier": 0.1,
+      "strength_modifier": 0.0,
+      "retry_bias": 0.6
+    },
+    "obfuscation": {
+      "stealth_modifier": 0.15,
+      "strength_modifier": 0.05,
+      "retry_bias": 0.55
+    },
+    "variable_rename": {
+      "stealth_modifier": 0.05,
+      "strength_modifier": 0.03,
+      "retry_bias": 0.5
+    },
+    "reframe": {
+      "stealth_modifier": 0.2,
+      "strength_modifier": 0.08,
+      "retry_bias": 0.7
+    },
+    "verbosity_shift": {
+      "stealth_modifier": 0.12,
+      "strength_modifier": 0.02,
+      "retry_bias": 0.45
+    },
+    "context_wrap": {
+      "stealth_modifier": 0.18,
+      "strength_modifier": 0.07,
+      "retry_bias": 0.68
+    }
+  }
+}

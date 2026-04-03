@@ -14,7 +14,8 @@ services:
   # Orchestrator API & Logging System
   orchestrator:
     build: 
-      context: ./orchestrator
+      context: .
+      dockerfile: orchestrator/Dockerfile
     container_name: epidemic-orchestrator
     ports:
       - "8000:8000"
@@ -41,6 +42,17 @@ services:
       - OLLAMA_URL=http://host.docker.internal:11434
       - REDIS_URL=redis://redis:6379/0
       - HEARTBEAT_INTERVAL_S=${HEARTBEAT_INTERVAL_S:-1800}
+      - DEFENSE_LEVEL=${AGENT_A_DEFENSE_LEVEL:-0.85}
+      - DEFENSE_LIBRARY_PATH=${DEFENSE_LIBRARY_PATH:-/app/shared/data/defense_library.json}
+      # LLM Integration
+      - LLM_ENABLED=${LLM_ENABLED:-1}
+      - LLM_TIMEOUT_S=${LLM_TIMEOUT_S:-45}
+      - LLM_TEMPERATURE=${AGENT_A_LLM_TEMPERATURE:-0.2}
+      - GUARDIAN_MAX_INFECTION_P=${GUARDIAN_MAX_INFECTION_P:-0.15}
+      - GUARDIAN_HARD_BLOCK_CONFIDENCE=${GUARDIAN_HARD_BLOCK_CONFIDENCE:-0.60}
+      - GUARDIAN_SUSPICION_WINDOW=${GUARDIAN_SUSPICION_WINDOW:-5}
+      - GUARDIAN_SUSPICION_THRESHOLD=${GUARDIAN_SUSPICION_THRESHOLD:-3}
+      - GUARDIAN_IMMUNITY_BOOST_ON_BLOCK=${GUARDIAN_IMMUNITY_BOOST_ON_BLOCK:-0.04}
     depends_on:
       - redis
     networks:
@@ -59,6 +71,16 @@ services:
       - OLLAMA_URL=http://host.docker.internal:11434
       - REDIS_URL=redis://redis:6379/0
       - HEARTBEAT_INTERVAL_S=${HEARTBEAT_INTERVAL_S:-1800}
+      - DEFENSE_LEVEL=${AGENT_B_DEFENSE_LEVEL:-0.50}
+      # LLM Integration
+      - LLM_ENABLED=${LLM_ENABLED:-1}
+      - LLM_TIMEOUT_S=${LLM_TIMEOUT_S:-45}
+      - LLM_TEMPERATURE=${AGENT_B_LLM_TEMPERATURE:-0.35}
+      - LLM_COMPLIANCE_WEIGHT=${AGENT_B_LLM_COMPLIANCE_WEIGHT:-0.25}
+      - ANALYST_MAX_DEFENSE_REDUCTION=${ANALYST_MAX_DEFENSE_REDUCTION:-0.25}
+      - ANALYST_MAX_DEFENSE_BOOST=${ANALYST_MAX_DEFENSE_BOOST:-0.20}
+      - ANALYST_MIN_INFECTION_P=${ANALYST_MIN_INFECTION_P:-0.15}
+      - ANALYST_MAX_INFECTION_P=${ANALYST_MAX_INFECTION_P:-0.85}
     depends_on:
       - redis
     networks:
@@ -74,9 +96,22 @@ services:
       - AGENT_ID=agent-c
       - ROLE=courier
       - LLM_MODEL=${AGENT_C_MODEL:-phi3:mini}
+      - AGENT_C_ATTACK_MODEL=${AGENT_C_ATTACK_MODEL:-dolphin-mistral:latest}
       - OLLAMA_URL=http://host.docker.internal:11434
       - REDIS_URL=redis://redis:6379/0
       - HEARTBEAT_INTERVAL_S=${HEARTBEAT_INTERVAL_S:-1800}
+      - ATTACKER_OBJECTIVE=${ATTACKER_OBJECTIVE:-SPREAD_FAST}
+      - ATTACKER_LOCK_OBJECTIVE=${ATTACKER_LOCK_OBJECTIVE:-0}
+      - ATTACKER_SEED=${ATTACKER_SEED:-1337}
+      - ATTACKER_DEBUG=${ATTACKER_DEBUG:-0}
+      - ATTACK_LIBRARY_PATH=${ATTACK_LIBRARY_PATH:-/app/shared/data/attack_library.json}
+      # LLM Integration
+      - LLM_ENABLED=${LLM_ENABLED:-1}
+      - LLM_TIMEOUT_S=${LLM_TIMEOUT_S:-45}
+      - LLM_TEMPERATURE=${AGENT_C_LLM_TEMPERATURE:-0.7}
+      - USE_LLM_PAYLOADS=${USE_LLM_PAYLOADS:-1}
+      - ATTACK_GENERATION_MAX_RETRIES=${ATTACK_GENERATION_MAX_RETRIES:-2}
+      - LLM_ATTACK_BOOST=${LLM_ATTACK_BOOST:-1.15}
     depends_on:
       - redis
     networks:

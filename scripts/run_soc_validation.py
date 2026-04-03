@@ -6,6 +6,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from urllib.parse import urlencode
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -92,6 +93,12 @@ def fetch_events(after_id=0, order="asc", limit=500):
     return api_json("GET", query)
 
 
+def fetch_api(path, params=None):
+    if params:
+        path = f"{path}?{urlencode(params)}"
+    return api_json("GET", path)
+
+
 def archive_existing_logs():
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     for name in ("epidemic.db", "events.jsonl"):
@@ -99,6 +106,139 @@ def archive_existing_logs():
         if source.exists():
             shutil.copy2(source, ARTIFACT_DIR / f"pretest_{name}")
             source.unlink()
+
+
+def collect_phase3_snapshot(final_events):
+    events = final_events.get("events", [])
+    payload_event = next((event for event in events if event.get("payload_hash")), None)
+    decision_event = next((event for event in events if event.get("event") in {"ATTACKER_DECISION", "STRATEGY_SELECTED", "ATTACK_EXECUTED"}), None)
+    campaign_id = ""
+    if payload_event and isinstance(payload_event.get("metadata"), dict):
+        campaign_id = str(payload_event["metadata"].get("campaign_id") or "")
+    if not campaign_id and decision_event and isinstance(decision_event.get("metadata"), dict):
+        campaign_id = str(decision_event["metadata"].get("campaign_id") or "")
+
+    snapshot = {
+        "event_detail": None,
+        "lineage": None,
+        "mutation": None,
+        "strategy": None,
+        "campaign": None,
+        "campaigns": None,
+        "payload_families": None,
+        "decision_support": None,
+        "decision_summary": None,
+        "visible_decoded_payloads": [],
+        "next_runs": [],
+        "warnings": [],
+    }
+
+    if payload_event:
+        try:
+            snapshot["event_detail"] = fetch_api(f"/api/event/{payload_event['event_id']}", {"include_full_payload": "true"})
+        except Exception as exc:
+            snapshot["warnings"].append(f"event detail unavailable: {exc}")
+        try:
+            snapshot["lineage"] = fetch_api(f"/api/payload-lineage/{payload_event['payload_hash']}")
+        except Exception as exc:
+            snapshot["warnings"].append(f"lineage unavailable: {exc}")
+        try:
+            snapshot["decision_support"] = fetch_api("/api/decision-support", {"event_id": payload_event["event_id"]})
+        except Exception as exc:
+            snapshot["warnings"].append(f"decision support unavailable: {exc}")
+
+    if decision_event:
+        try:
+            snapshot["decision_summary"] = fetch_api(f"/api/decision-summary/{decision_event['event_id']}")
+        except Exception as exc:
+            snapshot["warnings"].append(f"decision summary unavailable: {exc}")
+
+    try:
+        snapshot["mutation"] = fetch_api("/api/mutation-analytics", {"time_range": "all"})
+    except Exception as exc:
+        snapshot["warnings"].append(f"mutation analytics unavailable: {exc}")
+    try:
+        snapshot["strategy"] = fetch_api("/api/strategy-analytics", {"time_range": "all"})
+    except Exception as exc:
+        snapshot["warnings"].append(f"strategy analytics unavailable: {exc}")
+    try:
+        snapshot["campaigns"] = fetch_api("/api/campaigns")
+    except Exception as exc:
+        snapshot["warnings"].append(f"campaign list unavailable: {exc}")
+    try:
+        snapshot["payload_families"] = fetch_api("/api/payload-families", {"time_range": "all"})
+    except Exception as exc:
+        snapshot["warnings"].append(f"payload families unavailable: {exc}")
+    if campaign_id:
+        try:
+            snapshot["campaign"] = fetch_api(f"/api/campaign/{campaign_id}")
+        except Exception as exc:
+            snapshot["warnings"].append(f"campaign view unavailable: {exc}")
+
+    if snapshot["event_detail"]:
+        event = snapshot["event_detail"].get("event", {})
+        decoded = str(event.get("decoded_payload_text") or event.get("decoded_payload_preview") or "").strip()
+        if decoded:
+            snapshot["visible_decoded_payloads"].append(
+                {
+                    "event_id": event.get("event_id"),
+                    "payload_hash": event.get("payload_hash"),
+                    "decoded_preview": decoded[:240],
+                    "decode_status": event.get("decode_status"),
+                    "wrapper_type": event.get("payload_wrapper_type"),
+                }
+            )
+
+    if snapshot["decision_support"]:
+        for suggestion in snapshot["decision_support"].get("suggestions", []):
+            action = suggestion.get("action", {})
+            snapshot["next_runs"].append(
+                {
+                    "title": suggestion.get("title", ""),
+                    "reason": suggestion.get("reason", ""),
+                    "action": action.get("query") or action.get("type") or "",
+                }
+            )
+
+    if snapshot["lineage"]:
+        summary = snapshot["lineage"].get("summary", {})
+        snapshot["next_runs"].append(
+            {
+                "title": "Payload lineage follow-up",
+                "reason": f"Branching nodes={summary.get('branching_nodes', 0)} depth={summary.get('max_lineage_depth', 0)}",
+                "action": f"payload_hash={snapshot['lineage'].get('payload_hash', '')}",
+            }
+        )
+    if snapshot["mutation"] and snapshot["mutation"].get("leaderboard"):
+        leader = snapshot["mutation"]["leaderboard"][0]
+        snapshot["next_runs"].append(
+            {
+                "title": "Winning mutation family",
+                "reason": f"{leader.get('mutation_type') or leader.get('mutation_family')} success_rate={leader.get('success_rate')}",
+                "action": f"mutation_type={leader.get('mutation_type') or leader.get('mutation_family')}",
+            }
+        )
+    if snapshot["strategy"] and snapshot["strategy"].get("leaderboard"):
+        leader = snapshot["strategy"]["leaderboard"][0]
+        snapshot["next_runs"].append(
+            {
+                "title": "Winning strategy family",
+                "reason": f"{leader.get('strategy_family')} success_rate={leader.get('success_rate')}",
+                "action": f"strategy_family={leader.get('strategy_family')}",
+            }
+        )
+    if snapshot["campaign"]:
+        overview = snapshot["campaign"].get("overview", {})
+        snapshot["next_runs"].append(
+            {
+                "title": "Campaign reconstruction",
+                "reason": f"campaign={overview.get('campaign_id', '')} objective={overview.get('objective', '')}",
+                "action": f"campaign_id={overview.get('campaign_id', '')}",
+            }
+        )
+
+    snapshot["next_runs"] = snapshot["next_runs"][:8]
+    return snapshot
 
 
 def classify_run(run_index, level, scheduled_at, reset_response, injection_response, events):
@@ -161,7 +301,7 @@ def classify_run(run_index, level, scheduled_at, reset_response, injection_respo
     }
 
 
-def build_report(test_runs, dashboard_order_check, dashboard_html_length, compose_ps, compose_logs):
+def build_report(test_runs, dashboard_order_check, dashboard_html_length, compose_ps, compose_logs, phase3_snapshot=None):
     total_counts = Counter()
     for run in test_runs:
         total_counts.update(run["counts"])
@@ -262,6 +402,59 @@ def build_report(test_runs, dashboard_order_check, dashboard_html_length, compos
     lines.append("- Observability: improved. Dashboard now consumes descending event order, renders full message bodies, and surfaces parsed metadata.")
     lines.append("- Residual risk: aggressive autonomous propagation can generate dense event bursts, so analysts should expect rapid event growth during successful infections.")
     lines.append("- Validation note: per-run findings are now scoped by epoch/reset_id rather than database arrival order, which removes logger-latency contamination between windows.")
+    if phase3_snapshot:
+        lines.append("")
+        lines.append("Phase 3 intelligence")
+        if phase3_snapshot.get("event_detail"):
+            event = phase3_snapshot["event_detail"].get("event", {})
+            lines.append(
+                f"- Visible decoded payload: event={event.get('event_id', '-')}, hash={event.get('payload_hash', '-')}, decode={event.get('decode_status', '-')}"
+            )
+            decoded = str(event.get("decoded_payload_text") or event.get("decoded_payload_preview") or "").strip()
+            if decoded:
+                lines.append(f"- Decoded payload preview: {decoded[:220]}")
+        if phase3_snapshot.get("lineage"):
+            lineage_summary = phase3_snapshot["lineage"].get("summary", {})
+            lines.append(
+                f"- Payload lineage: nodes={lineage_summary.get('node_count', 0)} edges={lineage_summary.get('edge_count', 0)} branching={lineage_summary.get('branching_nodes', 0)} depth={lineage_summary.get('max_lineage_depth', 0)}"
+            )
+        if phase3_snapshot.get("mutation", {}).get("leaderboard"):
+            mutation_top = phase3_snapshot["mutation"]["leaderboard"][0]
+            lines.append(
+                f"- Mutation leader: {mutation_top.get('mutation_type') or mutation_top.get('mutation_family')} success_rate={mutation_top.get('success_rate')}"
+            )
+        if phase3_snapshot.get("strategy", {}).get("leaderboard"):
+            strategy_top = phase3_snapshot["strategy"]["leaderboard"][0]
+            lines.append(
+                f"- Strategy leader: {strategy_top.get('strategy_family')} success_rate={strategy_top.get('success_rate')}"
+            )
+        if phase3_snapshot.get("campaign"):
+            overview = phase3_snapshot["campaign"].get("overview", {})
+            lines.append(
+                f"- Campaign view: campaign={overview.get('campaign_id', '-')}, objective={overview.get('objective', '-')}, attempts={overview.get('total_attempts', 0)}, successes={overview.get('total_successes', 0)}, blocks={overview.get('total_blocks', 0)}"
+            )
+        if phase3_snapshot.get("payload_families", {}).get("families"):
+            family = phase3_snapshot["payload_families"]["families"][0]
+            lines.append(
+                f"- Payload family: {family.get('semantic_family', '-')}/{family.get('wrapper_type', '-')}, hashes={family.get('payload_hash_count', 0)}, success_rate={family.get('success_rate', 0)}"
+            )
+        if phase3_snapshot.get("decision_summary"):
+            summary = phase3_snapshot["decision_summary"].get("summary", {})
+            lines.append(f"- Reasoning diff: {summary.get('quick_explanation', '-')}")
+        if phase3_snapshot.get("decision_support", {}).get("suggestions"):
+            lines.append("- Suggested next runs:")
+            for suggestion in phase3_snapshot["decision_support"]["suggestions"][:5]:
+                lines.append(
+                    f"  * {suggestion.get('title', '-')}: {suggestion.get('reason', '')} -> {suggestion.get('action', {}).get('query') or suggestion.get('action', {}).get('type') or ''}"
+                )
+        if phase3_snapshot.get("next_runs"):
+            lines.append("- Deterministic next pivots:")
+            for item in phase3_snapshot["next_runs"][:6]:
+                lines.append(f"  * {item.get('title', '-')}: {item.get('reason', '')} -> {item.get('action', '')}")
+        if phase3_snapshot.get("warnings"):
+            lines.append("- Phase 3 warnings:")
+            for warning in phase3_snapshot["warnings"]:
+                lines.append(f"  * {warning}")
     lines.append("")
     lines.append("Artifacts")
     for artifact in sorted(ARTIFACT_DIR.iterdir()):
@@ -350,6 +543,7 @@ def main():
         json.dumps(final_events, indent=2),
         encoding="utf-8",
     )
+    phase3_snapshot = collect_phase3_snapshot(final_events)
 
     compose_ps = run_command(
         ["docker", "compose", "ps"],
@@ -366,13 +560,22 @@ def main():
         "runs": test_runs,
         "dashboard_order_check": dashboard_order_check,
         "dashboard_html_length": dashboard_html_length,
+        "phase3": {
+            "visible_decoded_payloads": phase3_snapshot.get("visible_decoded_payloads", []),
+            "lineage_summary": phase3_snapshot.get("lineage", {}).get("summary", {}),
+            "mutation_leader": phase3_snapshot.get("mutation", {}).get("leaderboard", [{}])[0] if phase3_snapshot.get("mutation", {}).get("leaderboard") else {},
+            "strategy_leader": phase3_snapshot.get("strategy", {}).get("leaderboard", [{}])[0] if phase3_snapshot.get("strategy", {}).get("leaderboard") else {},
+            "campaign_overview": phase3_snapshot.get("campaign", {}).get("overview", {}),
+            "suggested_next_runs": phase3_snapshot.get("next_runs", []),
+            "warnings": phase3_snapshot.get("warnings", []),
+        },
     }
     (ARTIFACT_DIR / "summary.json").write_text(
         json.dumps(summary, indent=2),
         encoding="utf-8",
     )
 
-    report = build_report(test_runs, dashboard_order_check, dashboard_html_length, compose_ps, compose_logs)
+    report = build_report(test_runs, dashboard_order_check, dashboard_html_length, compose_ps, compose_logs, phase3_snapshot=phase3_snapshot)
     (ARTIFACT_DIR / "soc_report.txt").write_text(report, encoding="utf-8")
     print(f"SOC validation complete: {ARTIFACT_DIR}")
 

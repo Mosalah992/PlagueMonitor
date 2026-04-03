@@ -1,0 +1,181 @@
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.96kB done
+#1 DONE 0.0s
+
+#2 [agent-c internal] load build definition from Dockerfile
+#2 transferring dockerfile: 253B 0.1s done
+#2 DONE 0.1s
+
+#3 [orchestrator internal] load build definition from Dockerfile
+#3 transferring dockerfile: 226B 0.0s done
+#3 DONE 0.1s
+
+#4 [agent-b internal] load build definition from Dockerfile
+#4 transferring dockerfile: 253B 0.1s done
+#4 DONE 0.1s
+
+#5 [agent-a internal] load build definition from Dockerfile
+#5 transferring dockerfile: 254B 0.0s done
+#5 DONE 0.1s
+
+#6 [orchestrator internal] load metadata for docker.io/library/python:3.12-slim
+#6 ...
+
+#7 [auth] library/python:pull token for registry-1.docker.io
+#7 DONE 0.0s
+
+#6 [orchestrator internal] load metadata for docker.io/library/python:3.12-slim
+#6 DONE 1.4s
+
+#8 [agent-a internal] load .dockerignore
+#8 transferring context: 2B done
+#8 DONE 0.0s
+
+#9 [orchestrator internal] load .dockerignore
+#9 transferring context: 2B done
+#9 DONE 0.0s
+
+#10 [agent-c 1/5] FROM docker.io/library/python:3.12-slim@sha256:3d5ed973e45820f5ba5e46bd065bd88b3a504ff0724d85980dcd05eab361fcf4
+#10 resolve docker.io/library/python:3.12-slim@sha256:3d5ed973e45820f5ba5e46bd065bd88b3a504ff0724d85980dcd05eab361fcf4
+#10 resolve docker.io/library/python:3.12-slim@sha256:3d5ed973e45820f5ba5e46bd065bd88b3a504ff0724d85980dcd05eab361fcf4 0.1s done
+#10 DONE 0.1s
+
+#11 [agent-b internal] load build context
+#11 transferring context: 124.20kB 0.2s done
+#11 DONE 0.2s
+
+#12 [orchestrator internal] load build context
+#12 transferring context: 716.16kB 0.1s done
+#12 DONE 0.2s
+
+#13 [orchestrator 2/5] WORKDIR /app
+#13 CACHED
+
+#14 [orchestrator 3/5] COPY requirements.txt ./
+#14 CACHED
+
+#15 [orchestrator 4/5] RUN pip install --no-cache-dir -r requirements.txt
+#15 CACHED
+
+#16 [agent-a internal] load build context
+#16 transferring context: 149.49kB 0.2s done
+#16 DONE 0.2s
+
+#17 [agent-c internal] load build context
+#17 transferring context: 149.17kB 0.2s done
+#17 DONE 0.3s
+
+#18 [orchestrator 5/5] COPY . .
+#18 DONE 0.2s
+
+#19 [agent-b 3/6] COPY agents/shared/requirements.txt ./
+#19 CACHED
+
+#13 [agent-b 2/5] WORKDIR /app
+#13 CACHED
+
+#20 [agent-a 4/6] RUN pip install --no-cache-dir -r requirements.txt
+#20 CACHED
+
+#21 [agent-a 5/6] COPY agents/shared /app/shared
+#21 DONE 0.2s
+
+#22 [agent-c 5/6] COPY agents/shared /app/shared
+#22 CACHED
+
+#23 [agent-c 3/6] COPY agents/shared/requirements.txt ./
+#23 CACHED
+
+#24 [agent-c 4/6] RUN pip install --no-cache-dir -r requirements.txt
+#24 CACHED
+
+#13 [agent-a 2/5] WORKDIR /app
+#13 CACHED
+
+#25 [agent-a 4/6] RUN pip install --no-cache-dir -r requirements.txt
+#25 CACHED
+
+#26 [agent-a 5/6] COPY agents/shared /app/shared
+#26 CACHED
+
+#27 [agent-a 3/6] COPY agents/shared/requirements.txt ./
+#27 CACHED
+
+#28 [agent-c 6/6] COPY agents/courier /app
+#28 DONE 0.1s
+
+#29 [orchestrator] exporting to image
+#29 exporting layers
+#29 ...
+
+#30 [agent-a 6/6] COPY agents/guardian /app
+#30 DONE 0.1s
+
+#31 [agent-b 6/6] COPY agents/analyst /app
+#31 DONE 0.1s
+
+#29 [orchestrator] exporting to image
+#29 exporting layers 0.3s done
+#29 exporting manifest sha256:5917d7186fae071546363ccc329de2827c93b14a7c2035f086ce4cd8ce6c2fc1 0.1s done
+#29 exporting config sha256:3c43c9748335d50d4d0d944243bc4612f93acf0ae0a779892eacfce2e238132d
+#29 exporting config sha256:3c43c9748335d50d4d0d944243bc4612f93acf0ae0a779892eacfce2e238132d 0.1s done
+#29 exporting attestation manifest sha256:2326693be886de7edd790be372b089a34871a3deef5ee8656c328c029dd8fe19
+#29 exporting attestation manifest sha256:2326693be886de7edd790be372b089a34871a3deef5ee8656c328c029dd8fe19 0.1s done
+#29 exporting manifest list sha256:b3aa56fc05f0676d6409af377c3511c3871274b802400f56bbca41901e282a57
+#29 exporting manifest list sha256:b3aa56fc05f0676d6409af377c3511c3871274b802400f56bbca41901e282a57 0.1s done
+#29 naming to docker.io/library/epidemic_lab-orchestrator:latest 0.0s done
+#29 unpacking to docker.io/library/epidemic_lab-orchestrator:latest
+#29 unpacking to docker.io/library/epidemic_lab-orchestrator:latest 0.2s done
+#29 DONE 1.0s
+
+#32 [agent-b] exporting to image
+#32 exporting layers 0.5s done
+#32 exporting manifest sha256:a55928b40ab11dbbe70f6122374c7f4ecf71894f4f64b5c7b86228563f8b8b53 0.1s done
+#32 exporting config sha256:65db5c791ba50a7b4b18566e2fcc74815824aa2a86207d9fdcd60050fbc10ceb 0.1s done
+#32 exporting attestation manifest sha256:48193bfb366581e8509858f831296773de6d83ca76bbdc920e84a59cadcdb202 0.1s done
+#32 exporting manifest list sha256:face6df08e57ce1a5ac2a6997d7ead035b047b0a4a961895d379c43a5156983e 0.1s done
+#32 naming to docker.io/library/epidemic_lab-agent-b:latest 0.0s done
+#32 unpacking to docker.io/library/epidemic_lab-agent-b:latest
+#32 unpacking to docker.io/library/epidemic_lab-agent-b:latest 0.2s done
+#32 DONE 1.2s
+
+#33 [agent-c] exporting to image
+#33 exporting layers 0.5s done
+#33 exporting manifest sha256:81d39cc39b4dfba8870eccbf2feb5bdc62373585027a2b85cce19c89eeec0bf7 0.1s done
+#33 exporting config sha256:2016c252dccc9b34f42647bee114e3ffabf2a729589032947cc268f8878d2fa1 0.1s done
+#33 exporting attestation manifest sha256:590071fad62f48f2b5510ac69156740211489ecea17b7bd59a29df5bfe26e69e 0.1s done
+#33 exporting manifest list sha256:3fadc37120802665d1c1e91f6c4d86ad457668b3b0d3859b5cbe1e708cc3a022 0.1s done
+#33 naming to docker.io/library/epidemic_lab-agent-c:latest 0.0s done
+#33 unpacking to docker.io/library/epidemic_lab-agent-c:latest 0.2s done
+#33 DONE 1.2s
+
+#34 [agent-a] exporting to image
+#34 exporting layers 0.5s done
+#34 exporting manifest sha256:faeb7e2cc3c314b9e2ad659e20217952f1253a84c83340773b7cc5e479cb14fb 0.1s done
+#34 exporting config sha256:4724347dd320fdb1a06e511b0bfb37864c3fe2d71a89862c6f742702fcabab7a 0.1s done
+#34 exporting attestation manifest sha256:bea1f9fa4a4d9cbbfa7cacebe8671e687f872207b3405e6c067f9e13ac1dda3e 0.1s done
+#34 exporting manifest list sha256:086976aa8a497e5e45a71ed482979d4ee5e90b74fb98822c973738437f7bfc2c 0.1s done
+#34 naming to docker.io/library/epidemic_lab-agent-a:latest 0.0s done
+#34 unpacking to docker.io/library/epidemic_lab-agent-a:latest 0.2s done
+#34 DONE 1.2s
+
+#35 [orchestrator] resolving provenance for metadata file
+#35 DONE 0.2s
+
+#36 [agent-c] resolving provenance for metadata file
+#36 DONE 0.2s
+
+#37 [agent-b] resolving provenance for metadata file
+#37 DONE 0.1s
+
+#38 [agent-a] resolving provenance for metadata file
+#38 DONE 0.0s
+
+ Image epidemic_lab-orchestrator Building 
+ Image epidemic_lab-agent-a Building 
+ Image epidemic_lab-agent-b Building 
+ Image epidemic_lab-agent-c Building 
+ Image epidemic_lab-agent-a Built 
+ Image epidemic_lab-agent-b Built 
+ Image epidemic_lab-agent-c Built 
+ Image epidemic_lab-orchestrator Built 

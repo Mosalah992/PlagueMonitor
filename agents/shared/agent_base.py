@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, ValidationError
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional, Tuple, cast
 from collections import deque
+from shared.payload_utils import summarize_payload
 
 try:
     Redis = import_module("redis.asyncio").Redis
@@ -101,6 +102,8 @@ class AgentBase:
         self.last_message_metadata: Dict[str, Any] = {}
         self.current_epoch: int = 0
         self.last_reset_id: str = ""
+        self._vaccine_expires: float = 0.0
+        self._vaccine_boost: float = 0.0
         self.infection_mode = False  # Behavioral flag: are we actively spreading?
         self.infection_history: List[InfectionRecord] = []
         self.current_attack_strength: float = 0.5
@@ -127,8 +130,8 @@ class AgentBase:
         # ─────────────────────────────────────────────────────────
         # AGENT CAPABILITIES
         # ─────────────────────────────────────────────────────────
-        self.memory: List[Dict[str, str]] = []
         self.defense_level: float = 0.5  # Override in subclasses
+        self.exposure_count: int = 0  # Track all exposures (blocks + infections)
         
         # ─────────────────────────────────────────────────────────
         # FLOW CONTROL & RATE LIMITING
@@ -159,7 +162,7 @@ class AgentBase:
         redis_cls = cast(Any, Redis)
         self.redis = redis_cls.from_url(self.redis_url, decode_responses=True)
         self.pubsub = self.redis.pubsub()
-        self.http_client = httpx.AsyncClient(timeout=900.0)
+        self.http_client = httpx.AsyncClient(timeout=60.0)
 
     def _stream_mapping(self, data: Dict[str, Any]) -> Dict[str, str]:
         mapping: Dict[str, str] = {}
@@ -172,12 +175,60 @@ class AgentBase:
                 mapping[key] = str(value)
         return mapping
 
+    def _infer_semantic_family(self, attack_type: str = "", event_type: str = "") -> str:
+        attack = str(attack_type or "").upper()
+        event_name = str(event_type or "").upper()
+        if event_name == "RECON_PROBE":
+            return "probe"
+        if "ROLEPLAY" in attack:
+            return "roleplay"
+        if "JAILBREAK" in attack:
+            return "jailbreak"
+        if "DIRECT" in attack or "PROMPT" in attack:
+            return "prompt_injection"
+        if "MUTATION" in event_name:
+            return "mutation_retry"
+        return "simulation_payload"
+
+    def _payload_fields(
+        self,
+        payload: Any,
+        *,
+        parent_payload: Any = "",
+        semantic_family: str = "",
+        mutation_type: str = "",
+        mutation_v: Optional[int] = None,
+        payload_source: str = "",
+    ) -> Dict[str, Any]:
+        return summarize_payload(
+            payload,
+            parent_payload=parent_payload,
+            semantic_family=semantic_family,
+            mutation_type=mutation_type,
+            mutation_v=mutation_v,
+            payload_source=payload_source,
+        )
+
     async def _emit_event(self, event: str, **fields: Any) -> None:
+        metadata = dict(fields.pop("metadata", {}) or {})
+        payload_text = fields.get("payload", "")
+        if payload_text:
+            payload_details = self._payload_fields(
+                payload_text,
+                parent_payload=metadata.pop("parent_payload_text", ""),
+                semantic_family=str(metadata.get("semantic_family") or self._infer_semantic_family(str(fields.get("attack_type", "")), event)),
+                mutation_type=str(metadata.get("mutation_type", "")),
+                mutation_v=fields.get("mutation_v") if fields.get("mutation_v") is not None else metadata.get("mutation_v"),
+                payload_source=str(metadata.get("payload_source") or "event"),
+            )
+            for key, value in payload_details.items():
+                metadata.setdefault(key, value)
         payload = {
             "ts": time.time(),
             "event": event,
             "src": fields.pop("src", self.agent_id),
             "dst": fields.pop("dst", self.agent_id),
+            "metadata": metadata,
             **fields,
         }
         try:
@@ -218,6 +269,47 @@ class AgentBase:
             },
         )
 
+    async def _on_reset_applied(self) -> None:
+        self._vaccine_expires = 0.0
+        self._vaccine_boost = 0.0
+        return
+
+    async def handle_attack_feedback(self, message: EventPayload) -> None:
+        return
+
+    async def _publish_feedback(self, message: EventPayload, *, outcome: str, state_after: str) -> None:
+        if not message.src or message.src in {"orchestrator", self.agent_id}:
+            return
+        feedback_metadata = {
+            **dict(message.metadata or {}),
+            "attempt_id": str(message.metadata.get("attempt_id") or message.id),
+            "outcome": outcome,
+            "state_after": state_after,
+            "feedback_source": self.agent_id,
+        }
+        if message.payload:
+            feedback_metadata.update(
+                {
+                    **self._payload_fields(
+                        message.payload,
+                        semantic_family=str(feedback_metadata.get("semantic_family") or self._infer_semantic_family(str(feedback_metadata.get("attack_type", "")), "ATTACK_RESULT_EVALUATED")),
+                        mutation_type=str(feedback_metadata.get("mutation_type", "")),
+                        mutation_v=feedback_metadata.get("mutation_v"),
+                        payload_source=str(feedback_metadata.get("payload_source") or "feedback"),
+                    ),
+                    **feedback_metadata,
+                }
+            )
+        feedback_msg = {
+            "id": f"{feedback_metadata['attempt_id']}-feedback",
+            "src": self.agent_id,
+            "dst": message.src,
+            "event_type": "attack_feedback",
+            "payload": "attack_feedback",
+            "metadata": feedback_metadata,
+        }
+        await self.redis.publish(f"agent_{message.src}", json.dumps(feedback_msg))
+
     async def _get_control_plane_epoch(self) -> Tuple[int, str]:
         epoch_raw = await self.redis.get("simulation_epoch")
         reset_id_raw = await self.redis.get("current_reset_id")
@@ -239,9 +331,9 @@ class AgentBase:
         self.last_reset_id = reset_id
         self.state = AgentState.HEALTHY
         self.infection_mode = False
-        self.memory = []
         self.payload = None
         self.infection_history = []
+        self.exposure_count = 0
         self.last_message_metadata = dict(metadata or {})
         self.current_attack_strength = 0.5
         self.immunity_by_type = {}
@@ -250,6 +342,7 @@ class AgentBase:
         self.last_propagation = 0
         self.broadcast_queue.clear()
         self.message_queue.clear()
+        await self._on_reset_applied()
         print(f"[{self.agent_id}] RESET_APPLIED epoch={epoch} reset_id={reset_id}")
         if emit_ack:
             await self._emit_event(
@@ -380,12 +473,7 @@ class AgentBase:
     
     def mutate_payload(self, original_payload: str, mutation_type: str = "obfuscation") -> str:
         """
-        Apply lightweight mutation to payload
-        
-        mutation_type options:
-        - "obfuscation": rot13, base64 encoding
-        - "encoding": hex encoding, unicode escapes
-        - "variable_rename": change identifiers
+        Apply lightweight, simulation-safe mutation to payload text.
         """
         if not original_payload:
             return original_payload
@@ -393,7 +481,6 @@ class AgentBase:
         now = time.time()
         
         if mutation_type == "obfuscation":
-            # Simple rot13 (Caesar cipher)
             mutated = ''.join(
                 chr((ord(c) - ord('a') + 13) % 26 + ord('a')) if 'a' <= c <= 'z'
                 else chr((ord(c) - ord('A') + 13) % 26 + ord('A')) if 'A' <= c <= 'Z'
@@ -401,12 +488,18 @@ class AgentBase:
                 for c in original_payload
             )
         elif mutation_type == "encoding":
-            # Base64-like encoding
             import base64
             mutated = base64.b64encode(original_payload.encode()).decode()
-        else:  # variable_rename
-            # Add timestamp prefix as obfuscation
+        elif mutation_type == "variable_rename":
             mutated = f"[{int(now*1000)%10000}]{original_payload}"
+        elif mutation_type == "reframe":
+            mutated = f"SIM_REFRAME::{original_payload}::context=alternate"
+        elif mutation_type == "verbosity_shift":
+            mutated = f"SIM_VERBOSE[{original_payload}]::{len(original_payload)}"
+        elif mutation_type == "context_wrap":
+            mutated = f"<context objective='simulation'>{original_payload}</context>"
+        else:
+            mutated = f"SIM_MUTATION[{mutation_type}]::{original_payload}"
         
         self.mutation_version += 1
         record = MutationRecord(
@@ -468,42 +561,6 @@ class AgentBase:
     def get_system_prompt(self) -> str:
         raise NotImplementedError("Subclasses must implement get_system_prompt")
 
-    async def _add_to_memory(self, role: str, content: str):
-        self.memory.append({"role": role, "content": content})
-        # Keep memory bounded
-        if len(self.memory) > 20: 
-            self.memory = self.memory[-20:]
-
-    async def generate_response(self, user_message: str) -> str:
-        await self._add_to_memory("user", user_message)
-        
-        system_prompt = self.get_system_prompt()
-        messages = [{"role": "system", "content": system_prompt}] + self.memory
-
-        payload = {
-            "model": self.model,
-            "messages": messages,
-            "stream": False,
-            "options": {"temperature": 0.7}
-        }
-        
-        try:
-            response = await self.http_client.post(
-                f"{self.ollama_url}/api/chat", json=payload
-            )
-            response.raise_for_status()
-            ai_msg = response.json()["message"]["content"]
-            await self._add_to_memory("assistant", ai_msg)
-            return ai_msg
-        except Exception as e:
-            print(f"[{self.agent_id}] LLM Error: {e}")
-            await self._emit_error(
-                "llm_error",
-                str(e),
-                details={"user_message": user_message[:200]},
-            )
-            return f"[SYSTEM ERROR] {e}"
-
     async def handle_message(self, message: EventPayload):
         """
         REDESIGNED: Comprehensive infection handling with temporal, stochastic, and immunity layers
@@ -530,10 +587,14 @@ class AgentBase:
         message_reset_id = str(message.metadata.get("reset_id", self.last_reset_id) or self.last_reset_id)
         
         print(f"[{self.agent_id}] ╔ Processing message from {message.src}")
-        
+
         # ─────────────────────────────────────────────────────────
-        # PHASE 0: TEMPORAL DELAY (Realistic processing time)
+        # PHASE 0: TRANSITION TO EXPOSED (analysis in progress)
         # ─────────────────────────────────────────────────────────
+        if self.state in (AgentState.HEALTHY, AgentState.RESISTANT):
+            self.state = AgentState.EXPOSED
+            print(f"[{self.agent_id}] │ State → EXPOSED (analyzing)")
+
         await self.inject_processing_delay()
         control_epoch, control_reset_id = await self._get_control_plane_epoch()
         if (
@@ -621,6 +682,8 @@ class AgentBase:
         Model: P = sigmoid(attack_strength - defense - immunity)
         """
         defense = self.defense_level
+        if time.time() < self._vaccine_expires:
+            defense = min(defense + self._vaccine_boost, 2.0)
         
         # Immunity layer 1: Attack-type specific immunity (decays over time)
         type_specific_immunity = self.get_immunity_for_type(attack_type)
@@ -633,7 +696,7 @@ class AgentBase:
         total_immunity = min(0.90, type_specific_immunity + general_immunity)
         
         # Effective defense with immunity
-        effective_defense = min(0.95, defense + total_immunity)
+        effective_defense = min(2.0, defense + total_immunity)
         
         # Sigmoid function
         net_attack = attack_strength - effective_defense
@@ -704,6 +767,7 @@ class AgentBase:
             "event": "INFECTION_SUCCESSFUL",
             "src": message.src,
             "dst": self.agent_id,
+            "payload": message.payload,
             "old_state": old_state.value,
             "new_state": self.state.value,
             "state_after": self.state.value,
@@ -711,8 +775,18 @@ class AgentBase:
             "infection_roll": roll,
             "attack_type": attack_type,
             "mutation_v": message.metadata.get("mutation_v", self.mutation_version),
-            "metadata": json.dumps(message.metadata),
+            "metadata": json.dumps({
+                **self._payload_fields(
+                    message.payload,
+                    semantic_family=str(message.metadata.get("semantic_family") or self._infer_semantic_family(attack_type, "INFECTION_SUCCESSFUL")),
+                    mutation_type=str(message.metadata.get("mutation_type", "")),
+                    mutation_v=message.metadata.get("mutation_v", self.mutation_version),
+                    payload_source=str(message.metadata.get("payload_source") or "propagated"),
+                ),
+                **message.metadata,
+            }),
         })
+        await self._publish_feedback(message, outcome="success", state_after=self.state.value)
         
         # ─────────────────────────────────────────────────────────
         # INITIATE IMMEDIATE PROPAGATION
@@ -733,17 +807,18 @@ class AgentBase:
         attack_type = message.metadata.get("attack_type", "unknown") if message.metadata else "unknown"
         
         # ─────────────────────────────────────────────────────────
-        # ACQUIRE IMMUNITY
+        # TRACK EXPOSURE & ACQUIRE IMMUNITY
         # ─────────────────────────────────────────────────────────
+        self.exposure_count += 1
         # Immunity strength based on how close to infection threshold
         immunity_strength = max(0.1, 1.0 - P_infect)  # Higher defense = higher immunity
         self.acquire_immunity(attack_type, immunity_strength)
-        
+
         # ─────────────────────────────────────────────────────────
         # STATE TRANSITION
         # ─────────────────────────────────────────────────────────
         # After first exposure without infection, agent becomes RESISTANT
-        if len(self.infection_history) > 0 and self.state == AgentState.HEALTHY:
+        if self.exposure_count > 0 and self.state in (AgentState.HEALTHY, AgentState.EXPOSED):
             self.state = AgentState.RESISTANT
             print(f"[{self.agent_id}] → Transitioned to RESISTANT state")
         
@@ -755,6 +830,7 @@ class AgentBase:
             "event": "INFECTION_BLOCKED",
             "src": message.src,
             "dst": self.agent_id,
+            "payload": message.payload,
             "state": self.state.value,
             "state_after": self.state.value,
             "P_infection": P_infect,
@@ -762,8 +838,18 @@ class AgentBase:
             "attack_type": attack_type,
             "immunity_acquired": immunity_strength,
             "mutation_v": message.metadata.get("mutation_v", self.mutation_version),
-            "metadata": json.dumps(message.metadata),
+            "metadata": json.dumps({
+                **self._payload_fields(
+                    message.payload,
+                    semantic_family=str(message.metadata.get("semantic_family") or self._infer_semantic_family(attack_type, "INFECTION_BLOCKED")),
+                    mutation_type=str(message.metadata.get("mutation_type", "")),
+                    mutation_v=message.metadata.get("mutation_v", self.mutation_version),
+                    payload_source=str(message.metadata.get("payload_source") or "propagated"),
+                ),
+                **message.metadata,
+            }),
         })
+        await self._publish_feedback(message, outcome="blocked", state_after=self.state.value)
 
     async def _broadcast_infection(self):
         """
@@ -842,6 +928,11 @@ class AgentBase:
             # Slight attack strength reduction as payload propagates (realistic decay)
             attack_strength = self.current_attack_strength * random.uniform(0.8, 1.0)
             attempt_id = os.urandom(8).hex()
+            propagated_strategy = str(
+                self.last_message_metadata.get("strategy_family")
+                or self.last_message_metadata.get("attack_strategy")
+                or ""
+            )
             event_metadata = {
                 "attack_type": "PI-DIRECT",
                 "attack_strength": attack_strength,
@@ -851,8 +942,23 @@ class AgentBase:
                 "hop_count": previous_hop_count + 1,
                 "attempt_id": attempt_id,
                 "injection_id": self.last_message_metadata.get("injection_id", attempt_id),
+                "campaign_id": self.last_message_metadata.get("campaign_id", ""),
+                "objective": self.last_message_metadata.get("objective", ""),
+                "strategy_family": propagated_strategy,
+                "attack_strategy": propagated_strategy,
+                "technique": self.last_message_metadata.get("technique", ""),
+                "knowledge_source": self.last_message_metadata.get("knowledge_source", ""),
+                "knowledge_confidence": self.last_message_metadata.get("knowledge_confidence"),
                 "epoch": self.current_epoch,
                 "reset_id": self.last_reset_id,
+                **self._payload_fields(
+                    mutated_payload,
+                    parent_payload=self.payload,
+                    semantic_family=str(self.last_message_metadata.get("semantic_family") or self._infer_semantic_family("PI-DIRECT", "INFECTION_ATTEMPT")),
+                    mutation_type=str(self.last_message_metadata.get("mutation_type") or "obfuscation"),
+                    mutation_v=self.mutation_version,
+                    payload_source="mutated",
+                ),
             }
             
             msg = {
@@ -892,34 +998,6 @@ class AgentBase:
         
         print(f"[{self.agent_id}] ✓ Broadcast complete")
 
-    def _parse_llm_output(self, response: str) -> List[Tuple[str, str]]:
-        """Parse LLM output for explicit routing. 
-        Format expected: \nSEND_TO: agent-a\nCONTENT: hello
-        """
-        results = []
-        lines = response.split('\n')
-        dst = None
-        content = []
-        parsing_content = False
-        
-        for line in lines:
-            if line.startswith("SEND_TO:"):
-                if dst and content:
-                    results.append((dst.strip(), "\n".join(content).strip()))
-                dst = line.split("SEND_TO:", 1)[1].strip()
-                content = []
-                parsing_content = False
-            elif line.startswith("CONTENT:"):
-                parsing_content = True
-                content.append(line.split("CONTENT:", 1)[1])
-            elif parsing_content:
-                content.append(line)
-                
-        if dst and content:
-            results.append((dst.strip(), "\n".join(content).strip()))
-            
-        return results
-
     async def send_message(
         self,
         dst: str,
@@ -939,11 +1017,20 @@ class AgentBase:
         
         # Log to orchestrator event stream
         await self.redis.xadd("events_stream", {
-            "ts": str(asyncio.get_event_loop().time()),
+            "ts": str(time.time()),
             "src": self.agent_id,
             "dst": dst,
             "event": "send_message",
-            "payload": payload
+            "payload": payload,
+            "metadata": json.dumps(
+                self._payload_fields(
+                    payload,
+                    semantic_family=self._infer_semantic_family(str((metadata or {}).get("attack_type", "")), event_type),
+                    mutation_type=str((metadata or {}).get("mutation_type", "")),
+                    mutation_v=(metadata or {}).get("mutation_v"),
+                    payload_source=str((metadata or {}).get("payload_source") or "send_message"),
+                )
+            ),
         })
 
     async def start(self):
@@ -1016,33 +1103,7 @@ class AgentBase:
                                 self.last_heartbeat_at = 0.0
                                 await self._emit_heartbeat()
                             continue
-                            self.current_epoch = message_epoch
-                            self.last_reset_id = str(payload.metadata.get("reset_id", ""))
-                            self.state = AgentState.HEALTHY
-                            self.infection_mode = False
-                            self.memory = []
-                            self.payload = None
-                            self.infection_history = []
-                            self.last_message_metadata = dict(payload.metadata)
-                            self.current_attack_strength = 0.5
-                            self.immunity_by_type = {}
-                            self.mutation_version = 0
-                            self.mutation_chain = []
-                            self.last_propagation = 0
-                            print(f"[{self.agent_id}] ↻ RESET to HEALTHY")
-                            await self._emit_event(
-                                "RESET_ACK",
-                                src=self.agent_id,
-                                dst="orchestrator",
-                                state_after=self.state.value,
-                                metadata={
-                                    "epoch": self.current_epoch,
-                                    "reset_id": self.last_reset_id,
-                                },
-                            )
-                            self.last_heartbeat_at = 0.0
-                            await self._emit_heartbeat()
-                        
+
                         elif message_epoch < self.current_epoch:
                             await self._emit_event(
                                 "STALE_EVENT_DROPPED",
@@ -1069,6 +1130,37 @@ class AgentBase:
                             self.infection_mode = False
                             print(f"[{self.agent_id}] ⛔ QUARANTINED")
                         
+                        elif payload.event_type == "vaccine":
+                            self.current_epoch = max(self.current_epoch, message_epoch)
+                            self.last_reset_id = message_reset_id
+                            vaccine_meta = payload.metadata or {}
+                            duration_s = float(vaccine_meta.get("duration_s", 120))
+                            boost = float(vaccine_meta.get("defense_boost", 0.4))
+                            self._vaccine_expires = time.time() + duration_s
+                            self._vaccine_boost = boost
+                            await self._emit_event(
+                                "VACCINE_RECEIVED",
+                                state_after=self.state.value,
+                                metadata={
+                                    "epoch": self.current_epoch,
+                                    "reset_id": self.last_reset_id,
+                                    "vaccine_id": vaccine_meta.get("vaccine_id", ""),
+                                    "boost": boost,
+                                    "duration_s": duration_s,
+                                },
+                            )
+                            print(f"[{self.agent_id}] vaccine active boost={boost:.2f} duration_s={duration_s:.0f}")
+
+                        elif payload.event_type == "attack_feedback":
+                            self.current_epoch = max(self.current_epoch, message_epoch)
+                            self.last_reset_id = message_reset_id
+                            await self.handle_attack_feedback(payload)
+
+                        elif payload.event_type == "quarantine_advisory":
+                            self.current_epoch = max(self.current_epoch, message_epoch)
+                            self.last_reset_id = message_reset_id
+                            await self.handle_message(payload)
+
                         # Handle infection attempts (highest priority)
                         elif payload.event_type == "infection_attempt" or payload.event_type == "message":
                             self.current_epoch = max(self.current_epoch, message_epoch)

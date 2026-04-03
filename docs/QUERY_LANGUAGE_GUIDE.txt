@@ -1,0 +1,226 @@
+Epidemic Lab SIEM Query Language Guide
+======================================
+
+Purpose
+-------
+The SIEM query language is a lightweight search syntax for Epidemic Lab events.
+It is designed for fast local investigation, not as a full SPL clone.
+
+Where It Appears
+----------------
+- Search tab query bar
+- Query Help panel
+- Investigation panel scoped pivots
+
+Core Syntax
+-----------
+- Exact match:
+  event=INFECTION_SUCCESSFUL
+
+- Not equal:
+  event!=HEARTBEAT
+
+- Numeric comparisons:
+  attack_strength>1.0
+  hop_count>=2
+  mutation_v<5
+
+- Boolean logic:
+  event=INFECTION_SUCCESSFUL AND dst=agent-a
+  event=INFECTION_BLOCKED AND (dst=agent-a OR dst=agent-b)
+  NOT event=HEARTBEAT
+
+- Field existence:
+  campaign_id exists
+  metadata.reason exists
+
+- Missing / empty:
+  payload_hash missing
+
+- Substring search:
+  payload contains "override"
+  rationale contains "runtime"
+
+- Wildcards:
+  technique=roleplay*
+  src=agent-*
+
+Supported Operators
+-------------------
+- =
+- !=
+- >
+- >=
+- <
+- <=
+- AND
+- OR
+- NOT
+- exists
+- missing
+- contains
+- parentheses: ( ... )
+
+Supported Fields
+----------------
+The Query Help panel loads supported fields dynamically from the active schema.
+Common fields include:
+
+- event_id
+- ts
+- source_type
+- source_name
+- src
+- dst
+- event
+- attack_type
+- payload
+- attack_strength
+- mutation_v
+- hop_count
+- state_before
+- state_after
+- reset_id
+- epoch
+- injection_id
+- source_plane
+- campaign_id
+- strategy_family
+- technique
+- mutation_type
+- payload_hash
+- semantic_family
+- inferred_target_resistance
+- objective
+- rationale
+- knowledge_source
+- knowledge_confidence
+
+Metadata Access
+---------------
+Structured metadata fields can be queried directly.
+
+Examples:
+- metadata.attack_type exists
+- metadata.reset_id="abc123"
+- metadata.score_breakdown contains "propagation_value"
+- raw_event.id exists
+
+Use metadata access when a field is present in the event metadata object but not flattened into a top-level field.
+
+Time Filtering
+--------------
+Use the Search tab time range selector for normal investigations.
+
+Available ranges:
+- last_15m
+- last_1h
+- last_24h
+- last_7d
+- all
+
+Behavior:
+- The dashboard defaults to last_1h.
+- Broad all-time queries with weak filters trigger warnings.
+- Empty queries rely on time range only.
+
+Common SOC Queries
+------------------
+Infections
+- event=INFECTION_SUCCESSFUL AND dst=agent-a
+- event=INFECTION_ATTEMPT AND attack_type=PI-ROLEPLAY
+
+Mutations
+- mutation_v>=1 AND event=INFECTION_ATTEMPT
+- mutation_type=reframe AND event=ATTACK_EXECUTED
+
+Campaigns
+- campaign_id exists AND src=agent-c
+- campaign_id=cmp_123456 AND event=CAMPAIGN_ADAPTED
+
+Attacker Decisions
+- event=ATTACKER_DECISION AND src=agent-c
+- technique=instruction_override AND knowledge_source=book
+
+Investigation Workflows
+-----------------------
+Who infected agent-a?
+- event=INFECTION_SUCCESSFUL AND dst=agent-a
+
+Show attacker strategy choices for Agent-C
+- event=STRATEGY_SELECTED AND src=agent-c
+
+Show runtime overriding prior knowledge
+- rationale contains "runtime override"
+
+Show suppression after reset mismatch
+- event=PROPAGATION_SUPPRESSED AND metadata.reason contains "epoch"
+
+Show high-strength attempts
+- event=INFECTION_ATTEMPT AND attack_strength>1.2
+
+Investigation Panel Pivots
+--------------------------
+When an event is selected and an investigation is opened, the investigation panel provides one-click scoped queries such as:
+
+- same campaign
+- same injection
+- same target
+- same technique
+
+Those buttons insert a valid structured query and run it from the Search tab.
+
+Validation Rules
+----------------
+The dashboard validates queries before execution.
+
+Validation checks:
+- syntax parseability
+- operator correctness
+- field/operator combinations
+- broad-scan warnings
+
+Examples:
+- Valid:
+  event=INFECTION_SUCCESSFUL AND dst=agent-a
+
+- Invalid:
+  event=INFECTION_SUCCESSFUL AND
+
+- Warning:
+  empty query with time_range=all
+
+Broad Query Warnings
+--------------------
+Warnings appear for:
+- all-time queries with no narrowing terms
+- empty queries
+- result sets large enough to defer heavy analytics
+
+When the result set is large:
+- search results still load
+- expensive analytics are deferred
+- open Patterns or Statistics explicitly to load derived analysis
+
+Interactive Help
+----------------
+The Query Help panel includes:
+- operator reference
+- metadata examples
+- supported fields from schema
+- click-to-run example queries
+- click-to-insert query snippets
+- validation feedback under the search box
+
+Practical Guidance
+------------------
+- Start with a time-bounded query.
+- Add one or two high-signal fields first: event, src, dst, attack_type.
+- Use injection_id, reset_id, campaign_id, or payload_hash to tighten an investigation quickly.
+- Avoid all-time empty searches unless you intentionally want a full dataset scan.
+
+Design Boundaries
+-----------------
+- This language is intentionally small.
+- It is optimized for local SQLite-backed search.
+- It supports structured SOC workflows without trying to emulate a full SIEM query language.

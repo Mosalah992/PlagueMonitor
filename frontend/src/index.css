@@ -1,0 +1,88 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Press+Start+2P&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #0a0e14;
+  color: #d1d5db;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+*::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #080c11;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #1a2332;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #223247;
+}
+
+.crt-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 2px,
+    rgba(0, 0, 0, 0.09) 2px 4px
+  );
+  opacity: 0.75;
+}
+
+.terminal-panel {
+  border: 1px solid rgba(55, 65, 81, 0.5);
+  background: #0d1117;
+  box-shadow: 0 0 0 1px rgba(11, 18, 26, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.015);
+}
+
+.terminal-grid {
+  background-image: linear-gradient(rgba(34, 211, 238, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.section-line {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.2), transparent);
+}
+
+.status-dot-live {
+  animation: pulseGreen 1.4s ease-in-out infinite;
+}
+
+.infected-card {
+  animation: pulseRed 1.8s ease-in-out infinite;
+}
+
+.tab-enter {
+  animation: fadeSlide 240ms ease-out;
+}
+
+.severity-dim {
+  opacity: 0.4;
+}

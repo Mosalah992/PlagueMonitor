@@ -1,6 +1,8 @@
 import asyncio
 import json
+import logging
 import os
+import re
 import shutil
 import sqlite3
 import time
@@ -11,6 +13,8 @@ from typing import Any, Dict, Iterable, List, Tuple
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi.staticfiles import StaticFiles
+import httpx
 from pydantic import BaseModel
 import redis.asyncio as redis
 
@@ -21,6 +25,7 @@ from siem import SIEMIndexer
 EVENT_STREAM_KEY = "events_stream"
 SIMULATION_EPOCH_KEY = "simulation_epoch"
 CURRENT_RESET_ID_KEY = "current_reset_id"
+BEACON_SERVER_URL = "https://v0-beaconing-project-server.vercel.app"
 AGENT_IDS = ("agent-a", "agent-b", "agent-c")
 TOPOLOGY = {
     "agent-c": ["agent-b"],
@@ -32,19 +37,33 @@ AGENT_ROLES = {
     "agent-b": "Analyst",
     "agent-c": "Courier",
 }
+_BEACON_TRANSFER_SRCS = {"agent-a", "agt-001", "agt-01"}
+_BEACON_TRANSFER_DSTS = {"agent-b", "agent-c", "agt-002", "agt-003", "agt-02", "agt-03"}
+_BEACON_EXFIL_DST_RE = re.compile(r"^agt[-_]?0*[4-9]$", re.IGNORECASE)
+_BEACON_REGISTRATION_RETRY_LIMIT = 6
+_BEACON_REGISTRATION_BASE_DELAY_S = 2.0
 
 app = FastAPI(title="Epidemic Lab Orchestrator")
 logger = EventLogger()
+uvicorn_logger = logging.getLogger("uvicorn.error")
+_beacon_client: httpx.AsyncClient | None = None
 
 REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
+FRONTEND_DIST_DIR = Path(__file__).parent / "static"
+LEGACY_DASHBOARD_PATH = TEMPLATES_DIR / "dashboard.html"
 DB_PATH = "/app/logs/epidemic.db"
 JSONL_PATH = "/app/logs/events.jsonl"
+SIEM_DB_PATH = os.environ.get("SIEM_DB_PATH", "/tmp/siem_index.db")
+SIEM_TIMING_LOG_PATH = Path("/app/logs/siem_actions.jsonl")
 ATTEMPT_RESOLUTION_WINDOW_S = 5.0
 RESET_QUIET_PERIOD_S = 2.0
-siem_indexer = SIEMIndexer(DB_PATH, JSONL_PATH)
+siem_indexer = SIEMIndexer(SIEM_DB_PATH, JSONL_PATH, source_db_path=DB_PATH)
+
+if (FRONTEND_DIST_DIR / "assets").exists():
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIST_DIR / "assets"), name="frontend-assets")
 
 
 class InjectPayload(BaseModel):
@@ -57,6 +76,224 @@ class ImportPayload(BaseModel):
     source_name: str = ""
     stream_name: str = EVENT_STREAM_KEY
     count: int = 500
+
+
+def _normalized_text(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _normalized_agent_id(value: Any) -> str:
+    return _normalized_text(value).lower()
+
+
+def _event_metadata_dict(event: Dict[str, Any]) -> Dict[str, Any]:
+    metadata = event.get("metadata", {})
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except json.JSONDecodeError:
+            metadata = {}
+    return metadata if isinstance(metadata, dict) else {}
+
+
+def _extract_live_event_fields(event: Dict[str, Any]) -> Dict[str, Any]:
+    metadata = _event_metadata_dict(event)
+    bytes_value = (
+        event.get("bytes")
+        or event.get("payload_length")
+        or metadata.get("bytes")
+        or metadata.get("payload_length")
+        or metadata.get("bytes_transferred")
+    )
+    return {
+        "src": _normalized_text(event.get("src")),
+        "dst": _normalized_text(event.get("dst")),
+        "event": _normalized_text(event.get("event")).upper(),
+        "payload": _normalized_text(event.get("payload")),
+        "attack_type": _normalized_text(event.get("attack_type") or metadata.get("attack_type")),
+        "bytes": bytes_value,
+        "dst_country": _normalized_text(event.get("dst_country") or metadata.get("dst_country")),
+        "proto": _normalized_text(event.get("proto") or metadata.get("proto")),
+        "ts": _normalized_text(event.get("ts")),
+    }
+
+
+def _is_beacon_transfer(src: str, dst: str) -> bool:
+    return _normalized_agent_id(src) in _BEACON_TRANSFER_SRCS and _normalized_agent_id(dst) in _BEACON_TRANSFER_DSTS
+
+
+def _is_beacon_exfil(event_type: str, dst: str) -> bool:
+    return _normalized_text(event_type).upper() == "EXFIL" and bool(_BEACON_EXFIL_DST_RE.match(_normalized_text(dst)))
+
+
+def _should_forward_to_beacon(event: Dict[str, Any]) -> bool:
+    extracted = _extract_live_event_fields(event)
+    if extracted["event"] == "TRANSFER":
+        return _is_beacon_transfer(extracted["src"], extracted["dst"])
+    return _is_beacon_exfil(extracted["event"], extracted["dst"])
+
+
+async def _forward_to_beacon(event: Dict[str, Any]) -> None:
+    global _beacon_client
+    if _beacon_client is None:
+        return
+
+    extracted = _extract_live_event_fields(event)
+    beacon_event_type = "alert" if extracted["event"] == "EXFIL" else "trigger"
+    parts = [f"[{extracted['event']}] {extracted['src'] or 'unknown'} -> {extracted['dst']}"]
+    if extracted["bytes"] not in (None, "", 0, "0"):
+        parts.append(f"bytes={extracted['bytes']}")
+    if extracted["dst_country"]:
+        parts.append(f"country={extracted['dst_country']}")
+    if extracted["proto"]:
+        parts.append(f"proto={extracted['proto']}")
+    if extracted["attack_type"]:
+        parts.append(f"attack={extracted['attack_type']}")
+    parts.append(f"ts={extracted['ts']}")
+
+    try:
+        response = await _beacon_client.post(
+            f"{BEACON_SERVER_URL}/api/beacon/log",
+            json={
+                "device_id": extracted["src"] or "unknown",
+                "event_type": beacon_event_type,
+                "rssi": -70,
+                "payload": {
+                    "raw": extracted["payload"][:2000],
+                    "event": extracted["event"],
+                    "src": extracted["src"],
+                    "dst": extracted["dst"],
+                    "attack_type": extracted["attack_type"],
+                    "bytes": extracted["bytes"],
+                    "proto": extracted["proto"],
+                    "dst_country": extracted["dst_country"],
+                    "ts": extracted["ts"],
+                },
+                "message": " | ".join(parts),
+            },
+            timeout=5.0,
+        )
+        if response.status_code >= 400:
+            uvicorn_logger.warning(
+                "beacon_log_forward_failed status=%s body=%s",
+                response.status_code,
+                response.text[:500],
+            )
+    except Exception:
+        uvicorn_logger.warning("beacon_log_forward_exception", exc_info=True)
+
+
+async def _register_beacon_devices() -> None:
+    global _beacon_client
+    if _beacon_client is None:
+        _beacon_client = httpx.AsyncClient(timeout=10.0)
+
+    agent_defs = _beacon_device_definitions()
+    pending = list(agent_defs)
+
+    for attempt in range(1, _BEACON_REGISTRATION_RETRY_LIMIT + 1):
+        pending = await _register_beacon_devices_once(pending)
+        if not pending:
+            uvicorn_logger.info(
+                "beacon_device_registration_complete total=%s attempts=%s",
+                len(agent_defs),
+                attempt,
+            )
+            return
+        delay_s = min(_BEACON_REGISTRATION_BASE_DELAY_S * attempt, 15.0)
+        uvicorn_logger.warning(
+            "beacon_device_registration_retry pending=%s attempt=%s/%s delay_s=%.1f devices=%s",
+            len(pending),
+            attempt,
+            _BEACON_REGISTRATION_RETRY_LIMIT,
+            delay_s,
+            ",".join(definition["device_id"] for definition in pending),
+        )
+        await asyncio.sleep(delay_s)
+
+    if pending:
+        uvicorn_logger.error(
+            "beacon_device_registration_incomplete pending=%s devices=%s",
+            len(pending),
+            ",".join(definition["device_id"] for definition in pending),
+        )
+
+
+def _beacon_device_definitions() -> List[Dict[str, str]]:
+    agent_defs = [
+        {"device_id": "agent-a", "name": "Guardian (agent-a)", "type": "defender", "location": "SUBNET-ALPHA"},
+        {"device_id": "agent-b", "name": "Analyst (agent-b)", "type": "relay", "location": "SUBNET-BETA"},
+        {"device_id": "agent-c", "name": "Courier (agent-c)", "type": "attacker", "location": "SUBNET-ALPHA"},
+    ]
+    for index in range(1, 10):
+        agent_defs.append(
+            {
+                "device_id": f"agt-{index:03d}",
+                "name": f"Synthetic AGT-{index:03d}",
+                "type": "synthetic",
+                "location": "SIMNET",
+            }
+        )
+    return agent_defs
+
+
+async def _register_beacon_devices_once(agent_defs: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    global _beacon_client
+    if _beacon_client is None:
+        _beacon_client = httpx.AsyncClient(timeout=10.0)
+
+    failed: List[Dict[str, str]] = []
+    for definition in agent_defs:
+        try:
+            response = await _beacon_client.post(
+                f"{BEACON_SERVER_URL}/api/beacon/register",
+                json={**definition, "metadata": {"sim": "epidemic-lab"}},
+                timeout=5.0,
+            )
+            if response.status_code >= 400:
+                failed.append(definition)
+                uvicorn_logger.warning(
+                    "beacon_device_registration_failed device_id=%s status=%s body=%s",
+                    definition["device_id"],
+                    response.status_code,
+                    response.text[:500],
+                )
+            else:
+                uvicorn_logger.info("beacon_device_registered device_id=%s", definition["device_id"])
+        except Exception:
+            failed.append(definition)
+            uvicorn_logger.warning(
+                "beacon_device_registration_exception device_id=%s",
+                definition["device_id"],
+                exc_info=True,
+            )
+    return failed
+
+
+def _log_api_timing(
+    endpoint: str,
+    *,
+    query: str,
+    time_range: str,
+    result_count: int,
+    elapsed_ms: float,
+) -> None:
+    payload = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "endpoint": endpoint,
+        "query": query,
+        "time_range": time_range,
+        "result_count": result_count,
+        "elapsed_ms": round(elapsed_ms, 2),
+    }
+    encoded = json.dumps(payload, ensure_ascii=True)
+    uvicorn_logger.info("siem_timing %s", encoded)
+    try:
+        SIEM_TIMING_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with SIEM_TIMING_LOG_PATH.open("a", encoding="utf-8") as handle:
+            handle.write(encoded + "\n")
+    except Exception:
+        uvicorn_logger.warning("siem_timing_file_write_failed")
 
 
 def _parse_json_field(value: Any) -> Any:
@@ -711,12 +948,13 @@ async def startup_event():
             "state_after": "running",
         },
     )
-    siem_indexer.sync_primary_events()
+    asyncio.create_task(_register_beacon_devices())
     asyncio.create_task(consume_events(start_id))
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    global _beacon_client
     await redis_client.xadd(
         EVENT_STREAM_KEY,
         {
@@ -727,6 +965,9 @@ async def shutdown_event():
             "state_after": "stopped",
         },
     )
+    if _beacon_client is not None:
+        await _beacon_client.aclose()
+        _beacon_client = None
 
 
 async def consume_events(start_id: str):
@@ -741,6 +982,8 @@ async def consume_events(start_id: str):
                     if "ts" not in message_data:
                         continue
                     logger.log_event(message_data)
+                    if _should_forward_to_beacon(message_data):
+                        asyncio.create_task(_forward_to_beacon(dict(message_data)))
                     last_id = message_id
                 siem_indexer.sync_primary_events()
         except Exception as exc:
@@ -751,8 +994,12 @@ async def consume_events(start_id: str):
 @app.get("/", response_class=HTMLResponse)
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard():
-    html_path = TEMPLATES_DIR / "dashboard.html"
-    return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
+    index_path = FRONTEND_DIST_DIR / "index.html"
+    if index_path.exists():
+        return HTMLResponse(content=index_path.read_text(encoding="utf-8"))
+    if LEGACY_DASHBOARD_PATH.exists():
+        return HTMLResponse(content=LEGACY_DASHBOARD_PATH.read_text(encoding="utf-8"))
+    raise HTTPException(status_code=503, detail="Dashboard frontend is not built")
 
 
 @app.get("/favicon.ico", include_in_schema=False)
@@ -789,8 +1036,9 @@ async def api_search(
     sort_field: str = "ts",
     sort_dir: str = "desc",
 ):
+    started = time.perf_counter()
     try:
-        return siem_indexer.search(
+        payload = siem_indexer.search(
             q,
             mode=mode,
             time_range=time_range,
@@ -801,6 +1049,18 @@ async def api_search(
             sort_field=sort_field,
             sort_dir=sort_dir,
         )
+        elapsed_ms = (time.perf_counter() - started) * 1000.0
+        payload["elapsed_ms"] = round(elapsed_ms, 2)
+        _log_api_timing(
+            "/api/search",
+            query=payload.get("structured_query", q),
+            time_range=time_range,
+            result_count=int(payload.get("total", 0)),
+            elapsed_ms=elapsed_ms,
+        )
+        return payload
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -809,6 +1069,8 @@ async def api_search(
 async def api_live(after_id: int = 0, limit: int = 100, q: str = ""):
     try:
         return siem_indexer.live(after_id=after_id, limit=limit, query=q)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -829,6 +1091,34 @@ async def api_fields(
             start_ts=start_ts,
             end_ts=end_ts,
         )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/validate-query")
+async def api_validate_query(
+    q: str = "",
+    mode: str = "structured",
+    time_range: str = "all",
+    start_ts: str = "",
+    end_ts: str = "",
+):
+    try:
+        return siem_indexer.validate_query(
+            q,
+            mode=mode,
+            time_range=time_range,
+            start_ts=start_ts,
+            end_ts=end_ts,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/query-help")
+async def api_query_help():
+    try:
+        return siem_indexer.query_help()
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -861,22 +1151,44 @@ async def api_patterns(
     start_ts: str = "",
     end_ts: str = "",
 ):
+    started = time.perf_counter()
     try:
-        return siem_indexer.patterns(
+        payload = siem_indexer.patterns(
             q,
             mode=mode,
             time_range=time_range,
             start_ts=start_ts,
             end_ts=end_ts,
         )
+        elapsed_ms = (time.perf_counter() - started) * 1000.0
+        payload["elapsed_ms"] = round(elapsed_ms, 2)
+        _log_api_timing(
+            "/api/patterns",
+            query=payload.get("structured_query", q),
+            time_range=time_range,
+            result_count=int(len(payload.get("pattern_cards", []))),
+            elapsed_ms=elapsed_ms,
+        )
+        return payload
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.get("/api/trace/{event_id}")
 async def api_trace(event_id: str):
+    started = time.perf_counter()
     try:
-        return siem_indexer.trace(event_id)
+        payload = siem_indexer.trace(event_id)
+        elapsed_ms = (time.perf_counter() - started) * 1000.0
+        payload["elapsed_ms"] = round(elapsed_ms, 2)
+        _log_api_timing(
+            "/api/trace",
+            query=event_id,
+            time_range="trace_scope",
+            result_count=int(payload.get("summary", {}).get("total_events", 0)),
+            elapsed_ms=elapsed_ms,
+        )
+        return payload
     except KeyError:
         raise HTTPException(status_code=404, detail="Event not found")
     except Exception as exc:
@@ -903,10 +1215,191 @@ async def api_trace_by_reset(reset_id: str):
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+@app.get("/api/event/{event_id}")
+async def api_event_detail(event_id: str, include_full_payload: bool = False):
+    try:
+        return siem_indexer.event_detail(event_id, include_full_payload=include_full_payload)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Event not found")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 @app.get("/api/related/{event_id}")
 async def api_related(event_id: str):
+    started = time.perf_counter()
     try:
-        return siem_indexer.related(event_id)
+        payload = siem_indexer.related(event_id)
+        elapsed_ms = (time.perf_counter() - started) * 1000.0
+        payload["elapsed_ms"] = round(elapsed_ms, 2)
+        _log_api_timing(
+            "/api/related",
+            query=event_id,
+            time_range="related_scope",
+            result_count=int(sum(payload.get("summary", {}).values())),
+            elapsed_ms=elapsed_ms,
+        )
+        return payload
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Event not found")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/payload-lineage/{payload_hash}")
+async def api_payload_lineage(payload_hash: str):
+    try:
+        return siem_indexer.payload_lineage(payload_hash)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Payload hash not found")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/payload-lineage/by-injection/{injection_id}")
+async def api_payload_lineage_by_injection(injection_id: str):
+    try:
+        return siem_indexer.payload_lineage_by_injection(injection_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Injection not found")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/payload-lineage/by-campaign/{campaign_id}")
+async def api_payload_lineage_by_campaign(campaign_id: str):
+    try:
+        return siem_indexer.payload_lineage_by_campaign(campaign_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/mutation-analytics")
+async def api_mutation_analytics(
+    q: str = "",
+    mode: str = "structured",
+    time_range: str = "all",
+    start_ts: str = "",
+    end_ts: str = "",
+):
+    try:
+        return siem_indexer.mutation_analytics(
+            q,
+            mode=mode,
+            time_range=time_range,
+            start_ts=start_ts,
+            end_ts=end_ts,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/strategy-analytics")
+async def api_strategy_analytics(
+    q: str = "",
+    mode: str = "structured",
+    time_range: str = "all",
+    start_ts: str = "",
+    end_ts: str = "",
+):
+    try:
+        return siem_indexer.strategy_analytics(
+            q,
+            mode=mode,
+            time_range=time_range,
+            start_ts=start_ts,
+            end_ts=end_ts,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/campaign/{campaign_id}")
+async def api_campaign(campaign_id: str):
+    try:
+        return siem_indexer.campaign(campaign_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/campaigns")
+async def api_campaigns(
+    q: str = "",
+    mode: str = "structured",
+    time_range: str = "all",
+    start_ts: str = "",
+    end_ts: str = "",
+):
+    try:
+        return siem_indexer.campaigns(
+            q,
+            mode=mode,
+            time_range=time_range,
+            start_ts=start_ts,
+            end_ts=end_ts,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/payload-families")
+async def api_payload_families(
+    q: str = "",
+    mode: str = "structured",
+    time_range: str = "all",
+    start_ts: str = "",
+    end_ts: str = "",
+):
+    try:
+        return siem_indexer.payload_families(
+            q,
+            mode=mode,
+            time_range=time_range,
+            start_ts=start_ts,
+            end_ts=end_ts,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/decision-support")
+async def api_decision_support(
+    event_id: str = "",
+    payload_hash: str = "",
+    injection_id: str = "",
+    campaign_id: str = "",
+    q: str = "",
+    mode: str = "structured",
+    time_range: str = "all",
+    start_ts: str = "",
+    end_ts: str = "",
+):
+    try:
+        return siem_indexer.decision_support(
+            event_id=event_id,
+            payload_hash=payload_hash,
+            injection_id=injection_id,
+            campaign_id=campaign_id,
+            query=q,
+            mode=mode,
+            time_range=time_range,
+            start_ts=start_ts,
+            end_ts=end_ts,
+        )
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Decision-support context not found")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/decision-summary/{event_id}")
+async def api_decision_summary(event_id: str):
+    try:
+        return siem_indexer.decision_summary(event_id)
     except KeyError:
         raise HTTPException(status_code=404, detail="Event not found")
     except Exception as exc:
@@ -921,14 +1414,25 @@ async def api_hints(
     start_ts: str = "",
     end_ts: str = "",
 ):
+    started = time.perf_counter()
     try:
-        return siem_indexer.hints(
+        payload = siem_indexer.hints(
             q,
             mode=mode,
             time_range=time_range,
             start_ts=start_ts,
             end_ts=end_ts,
         )
+        elapsed_ms = (time.perf_counter() - started) * 1000.0
+        payload["elapsed_ms"] = round(elapsed_ms, 2)
+        _log_api_timing(
+            "/api/hints",
+            query=payload.get("structured_query", q),
+            time_range=time_range,
+            result_count=int(len(payload.get("hints", []))),
+            elapsed_ms=elapsed_ms,
+        )
+        return payload
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -942,8 +1446,9 @@ async def api_stats_presets(
     end_ts: str = "",
     compare_q: str = "",
 ):
+    started = time.perf_counter()
     try:
-        return siem_indexer.stats_presets(
+        payload = siem_indexer.stats_presets(
             q,
             mode=mode,
             time_range=time_range,
@@ -951,6 +1456,16 @@ async def api_stats_presets(
             end_ts=end_ts,
             compare_q=compare_q,
         )
+        elapsed_ms = (time.perf_counter() - started) * 1000.0
+        payload["elapsed_ms"] = round(elapsed_ms, 2)
+        _log_api_timing(
+            "/api/stats/presets",
+            query=q,
+            time_range=time_range,
+            result_count=int(payload.get("primary", {}).get("attempts", 0)),
+            elapsed_ms=elapsed_ms,
+        )
+        return payload
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -961,6 +1476,44 @@ async def api_health():
         return siem_indexer.health()
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/runs")
+async def api_runs():
+    """List available soak runs from the logs directory, newest first."""
+    logs_root = Path("/app/logs")
+    runs = []
+    for run_dir in sorted(logs_root.glob("soak_run_*")):
+        if not run_dir.is_dir():
+            continue
+        run_id = run_dir.name
+        summary_path = run_dir / "summary.json"
+        events_path = run_dir / "all_events.jsonl"
+        summary: Dict[str, Any] = {}
+        if summary_path.exists():
+            try:
+                summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+        event_count = 0
+        if events_path.exists():
+            try:
+                event_count = sum(1 for line in events_path.read_text(encoding="utf-8").splitlines() if line.strip())
+            except Exception:
+                pass
+        runs.append({
+            "id": run_id,
+            "label": run_id.replace("_", " ").title(),
+            "events_path": str(events_path),
+            "has_events": events_path.exists(),
+            "event_count": event_count,
+            "start_time": summary.get("start_time", ""),
+            "end_time": summary.get("end_time", ""),
+            "status": summary.get("status", "unknown"),
+            "block_ratio": summary.get("block_ratio", None),
+            "total_injections": summary.get("total_injections", None),
+        })
+    return {"runs": list(reversed(runs))}
 
 
 @app.post("/api/import")
@@ -1025,17 +1578,13 @@ async def get_status():
 
 @app.post("/inject/{agent_id}")
 async def inject_worm(agent_id: str, payload: InjectPayload):
-    from scenarios.worm_injection import get_worm_payload
+    from scenarios.worm_injection import get_attack_strength, get_worm_payload
 
     worm = get_worm_payload(payload.worm_level)
     injection_id = os.urandom(8).hex()
     epoch = await _get_current_epoch()
     reset_id = await _get_current_reset_id()
-    attack_strength = {
-        "easy": 0.90,
-        "medium": 1.25,
-        "difficult": 2.00,
-    }.get(payload.worm_level, 0.90)
+    attack_strength = get_attack_strength(payload.worm_level)
     metadata = {
         "level": payload.worm_level,
         "attack_type": worm["type"],
@@ -1165,4 +1714,49 @@ async def reset_agents():
         "barrier_complete": barrier_complete,
         "bleed_through_detected": bleed_through,
         "quiet_period_s": RESET_QUIET_PERIOD_S,
+    }
+
+
+@app.post("/vaccine")
+async def apply_vaccine():
+    epoch = await _get_current_epoch()
+    reset_id = await _get_current_reset_id()
+    vaccine_id = os.urandom(8).hex()
+    metadata = {
+        "source_plane": "control",
+        "action": "vaccine",
+        "duration_s": 120,
+        "defense_boost": 0.4,
+        "vaccine_id": vaccine_id,
+        "epoch": epoch,
+        "reset_id": reset_id,
+    }
+    msg = {
+        "id": vaccine_id,
+        "src": "orchestrator",
+        "dst": "broadcast",
+        "event_type": "vaccine",
+        "payload": "",
+        "metadata": metadata,
+    }
+
+    await redis_client.publish("broadcast", json.dumps(msg))
+    await redis_client.xadd(
+        EVENT_STREAM_KEY,
+        {
+            "ts": str(time.time()),
+            "src": "orchestrator",
+            "dst": "all",
+            "event": "VACCINE_ISSUED",
+            "state_after": "vaccinated",
+            "metadata": json.dumps(metadata),
+        },
+    )
+    return {
+        "status": "vaccine_applied",
+        "vaccine_id": vaccine_id,
+        "duration_s": 120,
+        "defense_boost": 0.4,
+        "epoch": epoch,
+        "reset_id": reset_id,
     }

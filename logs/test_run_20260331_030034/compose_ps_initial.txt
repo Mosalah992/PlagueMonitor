@@ -1,6 +1,0 @@
-﻿NAME                    IMAGE                       COMMAND                  SERVICE        CREATED              STATUS              PORTS
-epidemic-agent-a        epidemic_lab-agent-a        "python -u agent.py"     agent-a        About a minute ago   Up About a minute   
-epidemic-agent-b        epidemic_lab-agent-b        "python -u agent.py"     agent-b        About a minute ago   Up About a minute   
-epidemic-agent-c        epidemic_lab-agent-c        "python -u agent.py"     agent-c        About a minute ago   Up About a minute   
-epidemic-orchestrator   epidemic_lab-orchestrator   "uvicorn main:app --…"   orchestrator   About a minute ago   Up About a minute   0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp
-epidemic-redis          redis:7-alpine              "docker-entrypoint.s…"   redis          About a minute ago   Up About a minute   0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp

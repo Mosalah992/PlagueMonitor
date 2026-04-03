@@ -208,6 +208,139 @@
             border: 1px solid var(--line-soft);
             background: rgba(12, 18, 24, 0.75);
         }
+        .query-help-grid {
+            display: grid;
+            gap: 12px;
+            grid-template-columns: 1.2fr 1fr;
+        }
+        .panel.collapsed .panel-body {
+            display: none;
+        }
+        .head-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .head-actions button {
+            font-family: var(--mono);
+            padding: 6px 10px;
+            font-size: 0.78rem;
+        }
+        .help-columns {
+            display: grid;
+            gap: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+        .help-card {
+            border: 1px solid var(--line-soft);
+            border-radius: 12px;
+            background: var(--panel-2);
+            padding: 12px;
+        }
+        .help-card h4 {
+            margin: 0 0 8px;
+            font-size: 0.92rem;
+            color: var(--cyan);
+            font-family: var(--mono);
+        }
+        .help-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .help-example {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            align-items: flex-start;
+            border: 1px solid var(--line-soft);
+            border-radius: 10px;
+            padding: 9px 10px;
+            background: rgba(12, 18, 24, 0.65);
+        }
+        .help-example code,
+        .operator-code {
+            color: var(--green);
+            font-family: var(--mono);
+            word-break: break-word;
+        }
+        .query-feedback {
+            margin-top: 8px;
+            font-size: 0.82rem;
+            color: var(--muted);
+            min-height: 20px;
+        }
+        .query-feedback.error { color: var(--red); }
+        .query-feedback.warn { color: var(--amber); }
+        .query-feedback.good { color: var(--green); }
+        /* Run selector */
+        .run-selector-shell {
+            border-radius: 14px;
+            border: 1px solid rgba(100, 180, 255, 0.20);
+            margin-bottom: 14px;
+        }
+        .run-cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .run-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 10px 14px;
+            border: 1px solid var(--line-soft);
+            border-radius: 12px;
+            background: var(--panel-2);
+            min-width: 260px;
+            flex: 1 1 260px;
+        }
+        .run-card.active-run {
+            border-color: rgba(73, 255, 149, 0.45);
+            background: rgba(73, 255, 149, 0.06);
+        }
+        .run-info { flex: 1 1 auto; min-width: 0; }
+        .run-label {
+            font-family: var(--mono);
+            font-size: 0.92rem;
+            color: var(--fg);
+        }
+        .run-meta {
+            font-size: 0.78rem;
+            color: var(--muted);
+            margin-top: 3px;
+        }
+        .run-status-badge {
+            font-size: 0.72rem;
+            padding: 2px 7px;
+            border-radius: 999px;
+            border: 1px solid var(--line-soft);
+            font-family: var(--mono);
+        }
+        .run-status-badge.ok { color: var(--green); border-color: rgba(73,255,149,0.35); }
+        .run-status-badge.warn { color: var(--amber); border-color: rgba(255,180,0,0.35); }
+        .run-status-badge.err { color: var(--red); border-color: rgba(255,70,70,0.35); }
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .filter-group-label {
+            font-size: 0.72rem;
+            color: var(--muted);
+            font-family: var(--mono);
+            white-space: nowrap;
+            padding-right: 4px;
+        }
+        .filter-sep {
+            width: 1px;
+            height: 20px;
+            background: var(--line-soft);
+            margin: 0 4px;
+            flex-shrink: 0;
+        }
         .metric {
             border: 1px solid var(--line-soft);
             border-radius: 12px;
@@ -430,6 +563,97 @@
             font-family: var(--mono);
             line-height: 1.55;
         }
+        .payload-summary-grid {
+            display: grid;
+            grid-template-columns: 170px 1fr;
+            gap: 8px 12px;
+            font-size: 0.85rem;
+            font-family: var(--mono);
+        }
+        .payload-box {
+            border: 1px solid var(--line-soft);
+            border-radius: 12px;
+            background: rgba(12, 18, 24, 0.8);
+            padding: 10px;
+            font-family: var(--mono);
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 22svh;
+            overflow: auto;
+        }
+        .payload-preview-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .payload-preview-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .payload-view-toggle {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .payload-view-toggle button.active {
+            border-color: var(--green);
+            color: var(--green);
+            background: rgba(73, 255, 149, 0.1);
+        }
+        .decode-badge {
+            display: inline-block;
+            margin-right: 6px;
+            padding: 3px 7px;
+            border-radius: 999px;
+            border: 1px solid var(--line-soft);
+            background: rgba(21, 34, 46, 0.5);
+            color: var(--cyan);
+            font-size: 0.74rem;
+            font-family: var(--mono);
+        }
+        .payload-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(3, 6, 10, 0.78);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            z-index: 60;
+        }
+        .modal-backdrop.open { display: flex; }
+        .modal-panel {
+            width: min(1100px, 96vw);
+            max-height: 88svh;
+            overflow: hidden;
+            border: 1px solid var(--line-soft);
+            border-radius: 16px;
+            background: var(--panel);
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-head {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--line-soft);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: var(--mono);
+            color: var(--cyan);
+        }
+        .modal-body {
+            padding: 16px;
+            overflow: auto;
+        }
         .summary-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -617,6 +841,86 @@
             padding-bottom: 10px;
             margin-bottom: 12px;
         }
+        .columns-toolbar {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .columns-panel {
+            display: none;
+            border: 1px solid var(--line-soft);
+            border-radius: 12px;
+            background: rgba(21, 34, 46, 0.42);
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+        .columns-panel.open {
+            display: block;
+        }
+        .column-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 8px 12px;
+        }
+        .column-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--mono);
+            font-size: 0.82rem;
+        }
+        .column-option input {
+            margin: 0;
+            accent-color: var(--green);
+        }
+        .table-cell-preview {
+            max-width: 280px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .lineage-graph {
+            display: flex;
+            gap: 10px;
+            align-items: stretch;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+        .lineage-node {
+            min-width: 180px;
+            border: 1px solid var(--line-soft);
+            border-radius: 12px;
+            background: rgba(21, 34, 46, 0.48);
+            padding: 10px;
+            font-family: var(--mono);
+        }
+        .lineage-node.current {
+            border-color: rgba(73, 255, 149, 0.7);
+            box-shadow: inset 0 0 0 1px rgba(73, 255, 149, 0.18);
+        }
+        .lineage-node .node-title {
+            color: var(--cyan);
+            font-size: 0.76rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 6px;
+        }
+        .lineage-node .node-hash {
+            color: var(--green);
+            font-size: 0.95rem;
+            margin-bottom: 6px;
+            word-break: break-word;
+        }
+        .lineage-arrow {
+            display: flex;
+            align-items: center;
+            color: var(--muted);
+            font-family: var(--mono);
+            white-space: nowrap;
+        }
         .live-item {
             padding: 12px 14px;
             border-bottom: 1px solid var(--line-soft);
@@ -624,6 +928,26 @@
             grid-template-columns: 160px 150px 1fr;
             gap: 10px;
             font-family: var(--mono);
+        }
+        .live-item-main {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 0;
+        }
+        .live-payload {
+            border: 1px solid var(--line-soft);
+            border-radius: 10px;
+            background: rgba(12, 18, 24, 0.72);
+            padding: 8px 10px;
+            font-size: 0.78rem;
+            color: var(--muted);
+        }
+        .live-payload .payload-preview {
+            margin-top: 6px;
+            color: var(--text);
+            white-space: pre-wrap;
+            word-break: break-word;
         }
         .code-inline { color: var(--green); }
         .search-layout > aside,
@@ -656,6 +980,7 @@
         svg { width: 100%; height: auto; }
         @media (max-width: 1320px) {
             .search-layout, .control-layout { grid-template-columns: 1fr; }
+            .query-help-grid { grid-template-columns: 1fr; }
             #view-search aside.panel {
                 position: static;
                 top: auto;
@@ -734,51 +1059,126 @@
             </section>
 
             <section class="view" id="view-search">
+                <!-- Run Library -->
+                <div class="panel run-selector-shell" id="run-selector-panel">
+                    <div class="panel-head">
+                        <span>soak run library</span>
+                        <span class="head-actions">
+                            <span class="small" id="run-selector-status" style="color:var(--muted)">loading runs...</span>
+                            <button id="refresh-runs-btn">refresh</button>
+                        </span>
+                    </div>
+                    <div class="panel-body tight">
+                        <div class="run-cards" id="run-cards">
+                            <div class="empty-state">No soak runs found. Run a 6-hour soak to populate this library.</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="panel search-shell">
-                    <div class="panel-head">new search</div>
+                    <div class="panel-head">
+                        <span>search</span>
+                        <span class="head-actions">
+                            <select id="search-mode" title="Query mode">
+                                <option value="structured">field search</option>
+                                <option value="natural">natural language</option>
+                            </select>
+                            <select id="time-range" title="Time window">
+                                <option value="all">all time</option>
+                                <option value="last_15m">last 15 min</option>
+                                <option value="last_1h" selected>last hour</option>
+                                <option value="last_24h">last 24 h</option>
+                                <option value="last_7d">last 7 days</option>
+                            </select>
+                        </span>
+                    </div>
                     <div class="panel-body">
                         <div class="search-header">
                             <div class="query-shell">
-                                <div class="prompt">search ></div>
-                                <input id="search-query" placeholder="event=INFECTION_SUCCESSFUL AND dst=agent-a" />
+                                <div class="prompt">🔍</div>
+                                <input id="search-query" list="query-field-options" placeholder="e.g.  event=INFECTION_BLOCKED  or  blocked AND agent-c" />
+                                <datalist id="query-field-options"></datalist>
+                                <button id="run-search-btn">Search</button>
+                                <button id="clear-search-btn">Clear</button>
+                                <button id="export-search-btn">Export</button>
                             </div>
-                            <div class="query-tools">
-                                <select id="search-mode">
-                                    <option value="structured">structured</option>
-                                    <option value="natural">natural</option>
-                                </select>
-                                <select id="time-range">
-                                    <option value="all">all time</option>
-                                    <option value="last_15m">last 15m</option>
-                                    <option value="last_1h">last hour</option>
-                                    <option value="last_24h">last 24h</option>
-                                    <option value="last_7d">last 7d</option>
-                                </select>
-                                <button id="run-search-btn">run search</button>
-                                <button id="clear-search-btn">clear</button>
-                                <button id="export-search-btn">export</button>
-                            </div>
-                            <div class="toolbar" id="quick-filters">
-                                <button data-quick-filter="event=INFECTION_SUCCESSFUL">infections only</button>
-                                <button data-quick-filter="event=INFECTION_BLOCKED">blocked only</button>
-                                <button data-quick-filter="event=PROPAGATION_SUPPRESSED">suppressed only</button>
-                                <button data-quick-filter="source_plane=control">control plane only</button>
-                                <button data-quick-filter="source_plane!=control">data plane only</button>
-                                <button data-quick-filter="mutation_v>=1">mutations only</button>
-                                <button data-quick-filter="hop_count>=2">hop_count >= 2</button>
-                                <button data-quick-filter="event!=HEARTBEAT">hide heartbeats</button>
-                                <button data-quick-filter="current_reset">current reset only</button>
-                                <button data-quick-filter="current_run">current run only</button>
+                            <!-- Grouped quick filters -->
+                            <div class="toolbar" id="quick-filters" style="gap:6px 4px;">
+                                <span class="filter-group-label">Outcomes</span>
+                                <button data-quick-filter="event=INFECTION_SUCCESSFUL" title="Show successful infections">✅ Infected</button>
+                                <button data-quick-filter="event=INFECTION_BLOCKED" title="Show blocked attacks">🚫 Blocked</button>
+                                <button data-quick-filter="event=PROPAGATION_SUPPRESSED" title="Show suppressed propagation">⏭ Suppressed</button>
+                                <div class="filter-sep"></div>
+                                <span class="filter-group-label">Focus</span>
+                                <button data-quick-filter="event!=HEARTBEAT" title="Hide heartbeat noise">Hide Heartbeats</button>
+                                <button data-quick-filter="current_reset" title="Events in the current reset only">This Reset</button>
+                                <button data-quick-filter="current_run" title="Events in the current run only">This Run</button>
+                                <div class="filter-sep"></div>
+                                <span class="filter-group-label">Drill</span>
+                                <button data-quick-filter="mutation_v>=1" title="Payloads that have mutated">Mutated</button>
+                                <button data-quick-filter="hop_count>=2" title="Multi-hop propagation chains">Multi-Hop</button>
+                                <button data-quick-filter="source_plane=control" title="Control-plane events only">Control Plane</button>
+                                <button data-quick-filter="source_plane!=control" title="Data-plane events only">Data Plane</button>
                             </div>
                             <div class="search-meta">
                                 <div class="meta-item" id="search-count-meta">events: 0</div>
-                                <div class="meta-item" id="search-window-meta">window: all time</div>
-                                <div class="meta-item" id="search-mode-meta">mode: structured</div>
-                                <div class="meta-item" id="search-last-meta">latest: -</div>
+                                <div class="meta-item" id="search-window-meta">window: last hour</div>
+                                <div class="meta-item" id="search-mode-meta">mode: field search</div>
+                                <div class="meta-item" id="search-last-meta">latest: —</div>
+                                <div class="meta-item" id="search-elapsed-meta">search: idle</div>
                                 <div class="meta-item" id="trace-scope-meta">trace: none</div>
                             </div>
                         </div>
-                        <div class="small" id="structured-query">structured query: (empty)</div>
+                        <div class="small" id="structured-query" style="color:var(--muted)">parsed query: (empty)</div>
+                        <div class="small" id="search-status">Enter a search above or pick a quick filter to load results.</div>
+                        <div class="query-feedback" id="query-feedback"></div>
+                        <div class="error-box" id="search-guardrail" style="display:none; margin-top:10px;"></div>
+                    </div>
+                </div>
+
+                <div class="panel" id="query-help-panel" style="margin-top: 14px;">
+                    <div class="panel-head">
+                        <span>query help</span>
+                        <span class="head-actions">
+                            <span class="small" id="query-help-summary">loading query guide...</span>
+                            <button id="toggle-query-help-btn">expand</button>
+                        </span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="query-help-grid">
+                            <div class="help-columns">
+                                <div class="help-card">
+                                    <h4>syntax & operators</h4>
+                                    <div class="help-list" id="query-help-operators"></div>
+                                </div>
+                                <div class="help-card">
+                                    <h4>time filtering & warnings</h4>
+                                    <div class="help-list" id="query-help-time"></div>
+                                </div>
+                                <div class="help-card">
+                                    <h4>metadata access</h4>
+                                    <div class="help-list" id="query-help-metadata"></div>
+                                </div>
+                                <div class="help-card">
+                                    <h4>supported fields</h4>
+                                    <div class="help-list" id="query-help-fields"></div>
+                                </div>
+                            </div>
+                            <div class="help-columns">
+                                <div class="help-card">
+                                    <h4>interactive examples</h4>
+                                    <div class="help-list" id="query-help-examples"></div>
+                                </div>
+                                <div class="help-card">
+                                    <h4>common SOC use cases</h4>
+                                    <div class="help-list" id="query-help-soc"></div>
+                                </div>
+                                <div class="help-card">
+                                    <h4>phase 3 presets</h4>
+                                    <div class="help-list" id="query-help-phase3"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -824,16 +1224,26 @@
                                 <span id="search-summary">0 events</span>
                             </div>
                             <div class="panel-body">
+                                <div class="columns-toolbar">
+                                    <div class="small">Search results load first. Payload fields are optional table columns.</div>
+                                    <button id="toggle-columns-btn">columns</button>
+                                </div>
+                                <div class="columns-panel" id="column-selector-panel">
+                                    <div class="small" style="margin-bottom:8px;">Selectable result columns</div>
+                                    <div class="column-grid" id="column-selector-grid"></div>
+                                </div>
                                 <div class="subtabs result-tabs">
                                     <button class="active" data-search-tab="events">Events</button>
                                     <button data-search-tab="patterns">Patterns</button>
                                     <button data-search-tab="statistics">Statistics</button>
                                     <button data-search-tab="visualization">Visualization</button>
+                                    <button data-search-tab="intelligence">Intelligence</button>
                                 </div>
                                 <div class="view active" id="search-tab-events"><div class="table-wrap" id="events-table-wrap"></div></div>
                                 <div class="view" id="search-tab-patterns"><div class="cards" id="patterns-view"></div></div>
                                 <div class="view" id="search-tab-statistics"><div class="cards" id="statistics-view"></div></div>
                                 <div class="view" id="search-tab-visualization"><div class="cards" id="visualization-view"></div></div>
+                                <div class="view" id="search-tab-intelligence"><div class="cards" id="intelligence-view"></div></div>
                             </div>
                         </div>
                     </section>
@@ -847,12 +1257,58 @@
                                 <button id="pivot-attack-btn">pivot attack_type</button>
                                 <button id="pivot-injection-btn">pivot injection_id</button>
                                 <button id="pivot-reset-btn">pivot reset_id</button>
+                                <button id="pivot-payload-btn">pivot payload_hash</button>
                                 <button id="pivot-trace-btn">trace</button>
                                 <button id="show-related-btn">show related</button>
+                                <button id="open-campaign-btn">open campaign</button>
                                 <button id="open-investigation-btn">open investigation</button>
                                 <button id="copy-json-btn">copy json</button>
                             </div>
                             <div style="margin-top: 12px;" class="kv" id="event-detail-kv"></div>
+                            <div style="margin-top: 12px;">
+                                <div class="small">raw payload summary</div>
+                                <div class="payload-summary-grid" id="detail-payload-summary"></div>
+                                <div style="margin-top: 10px;">
+                                    <div class="small">decode summary</div>
+                                    <div class="payload-summary-grid" id="detail-decode-summary"></div>
+                                </div>
+                                <div class="payload-view-toggle">
+                                    <button id="payload-view-raw-btn">Raw</button>
+                                    <button id="payload-view-decoded-btn">Decoded</button>
+                                    <button id="payload-view-side-btn">Side-by-side</button>
+                                </div>
+                                <div style="margin-top: 10px;">
+                                    <div class="small">payload preview</div>
+                                    <div id="detail-payload-preview-container" class="payload-preview-stack">
+                                        <div class="payload-box" id="detail-payload-preview">(no payload selected)</div>
+                                    </div>
+                                </div>
+                                <div class="payload-actions">
+                                    <button id="copy-payload-preview-btn">copy preview</button>
+                                    <button id="copy-decoded-preview-btn">copy decoded preview</button>
+                                    <button id="show-payload-btn">show payload</button>
+                                    <button id="show-decoded-payload-btn">show decoded payload</button>
+                                    <button id="full-payload-btn">view full payload</button>
+                                    <button id="show-lineage-btn">show payload lineage</button>
+                                    <button id="show-related-payload-btn">show related payload events</button>
+                                </div>
+                                <div style="margin-top: 10px;">
+                                    <div class="small">payload lineage</div>
+                                    <div class="detail-block" id="detail-payload-lineage">(no lineage loaded)</div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 12px;">
+                                <div class="small">decision summary</div>
+                                <div class="pattern-list" id="detail-decision-summary">
+                                    <div class="empty-state">Select a reasoning-heavy event to expose strategy, mutation, confidence, and rationale.</div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 12px;">
+                                <div class="small">suggested next pivots</div>
+                                <div class="pattern-list" id="detail-suggestions">
+                                    <div class="empty-state">Select an event to generate deterministic next-step pivots.</div>
+                                </div>
+                            </div>
                             <div style="margin-top: 12px;">
                                 <div class="small">analytic hints</div>
                                 <div class="pattern-list" id="detail-hints"></div>
@@ -889,6 +1345,12 @@
                     </div>
                     <div class="panel-body">
                         <div id="investigation-body" class="cards"></div>
+                        <div style="margin-top: 12px;" class="help-card">
+                            <h4>investigation query pivots</h4>
+                            <div class="help-list" id="investigation-query-help">
+                                <div class="empty-state">Open an investigation to generate scoped query pivots.</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -900,6 +1362,7 @@
                         <div class="toolbar">
                             <input id="live-filter" style="flex: 1 1 380px;" placeholder="optional live filter, e.g. dst=agent-a" />
                             <button id="live-apply-btn">apply filter</button>
+                            <button id="live-payloads-btn">payloads: off</button>
                             <button id="live-pause-btn">pause</button>
                             <button id="live-lock-btn">scroll lock: on</button>
                             <button id="live-clear-btn">clear buffer</button>
@@ -924,27 +1387,87 @@
         </main>
     </div>
 
+    <div class="modal-backdrop" id="payload-modal">
+        <div class="modal-panel">
+            <div class="modal-head">
+                <span>full payload view</span>
+                <span>
+                    <button id="copy-payload-btn">copy payload</button>
+                    <button id="close-payload-modal-btn">close</button>
+                </span>
+            </div>
+            <div class="modal-body">
+                <div class="detail-block" id="payload-modal-body">(payload not loaded)</div>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API = window.location.origin;
         const state = {
             control: null,
             health: null,
             search: { events: [], interesting_fields: {}, timeline: [], total: 0, structured_query: "" },
+            queryHelp: null,
+            queryValidation: null,
             stats: null,
             statsPresets: null,
             patterns: null,
             selectedEvent: null,
+            eventDetail: null,
             trace: null,
             related: null,
+            payloadLineage: null,
+            decisionSummary: null,
+            decisionSupport: null,
+            mutationAnalytics: null,
+            strategyAnalytics: null,
+            payloadFamilies: null,
+            campaignList: null,
+            campaignDetail: null,
             resultHints: [],
             investigation: null,
             live: { events: [], latest_id: 0, metrics: {} },
+            liveFilterApplied: "",
+            liveShowPayloads: false,
+            detailPayloadView: "raw",
             livePaused: false,
             liveScrollLock: true,
+            searchHasRun: false,
+            searchBusy: false,
+            searchRequestId: 0,
+            hintRequestId: 0,
+            patternRequestId: 0,
+            statsRequestId: 0,
+            validateTimer: null,
+            queryHelpCollapsed: true,
+            tableColumns: ["ts", "event", "route", "attack_type", "attack_strength", "state_after", "mutation_v", "hop_count", "reset_id", "epoch", "injection_id"],
             activeView: "control",
             controlPoll: { busy: false, delayMs: 4000, timer: null },
             livePoll: { busy: false, delayMs: 2000, timer: null },
             errors: [],
+        };
+        const EVENT_COLUMN_DEFS = {
+            ts: { label: "ts", render: (event) => escapeHtml(event.ts || "") },
+            event: { label: "event", render: (event) => escapeHtml(event.event || "") },
+            route: { label: "src -> dst", render: (event) => escapeHtml(`${event.src || "?"} -> ${event.dst || "?"}`) },
+            attack_type: { label: "attack_type", render: (event) => escapeHtml(event.attack_type || "") },
+            attack_strength: { label: "attack_strength", render: (event) => escapeHtml(event.attack_strength ?? "") },
+            state_after: { label: "state_after", render: (event) => escapeHtml(event.state_after || "") },
+            semantic_family: { label: "semantic_family", render: (event) => escapeHtml(event.semantic_family || "") },
+            mutation_type: { label: "mutation_type", render: (event) => escapeHtml(event.mutation_type || "") },
+            mutation_v: { label: "mutation_v", render: (event) => escapeHtml(event.mutation_v ?? "") },
+            payload_hash: { label: "payload_hash", render: (event) => escapeHtml(event.payload_hash || "") },
+            parent_payload_hash: { label: "parent_payload_hash", render: (event) => escapeHtml(event.parent_payload_hash || "") },
+            payload_length: { label: "payload_length", render: (event) => escapeHtml(event.payload_length ?? "") },
+            payload_preview: { label: "payload_preview", render: (event) => `<div class="table-cell-preview" title="${escapeHtml(event.payload_preview || "")}">${escapeHtml(compactPreview(event.payload_preview || "", 110))}</div>` },
+            decoded_payload_preview: { label: "decoded_preview", render: (event) => `<div class="table-cell-preview" title="${escapeHtml(event.decoded_payload_preview || "")}">${escapeHtml(compactPreview(event.decoded_payload_preview || "", 110))}</div>` },
+            decode_status: { label: "decode_status", render: (event) => escapeHtml(event.decode_status || "") },
+            payload_wrapper_type: { label: "wrapper_type", render: (event) => escapeHtml(event.payload_wrapper_type || "") },
+            hop_count: { label: "hop_count", render: (event) => escapeHtml(event.hop_count ?? "") },
+            reset_id: { label: "reset_id", render: (event) => escapeHtml(event.reset_id || "") },
+            epoch: { label: "epoch", render: (event) => escapeHtml(event.epoch ?? "") },
+            injection_id: { label: "injection_id", render: (event) => escapeHtml(event.injection_id || "") },
         };
 
         function escapeHtml(value) {
@@ -971,6 +1494,111 @@
             if (value === null || value === undefined || value === "") return "(empty)";
             return escapeHtml(value);
         }
+        function compactPreview(value, maxLen = 90) {
+            const text = String(value ?? "");
+            if (!text) return "(empty)";
+            return text.length > maxLen ? `${text.slice(0, Math.max(0, maxLen - 3))}...` : text;
+        }
+        function getActiveColumnDefs() {
+            return state.tableColumns
+                .map((key) => ({ key, ...(EVENT_COLUMN_DEFS[key] || {}) }))
+                .filter((column) => column.label && column.render);
+        }
+        function renderColumnSelector() {
+            const grid = document.getElementById("column-selector-grid");
+            if (!grid) return;
+            grid.innerHTML = Object.entries(EVENT_COLUMN_DEFS).map(([key, config]) => `
+                <label class="column-option">
+                    <input type="checkbox" data-column-key="${escapeHtml(key)}" ${state.tableColumns.includes(key) ? "checked" : ""} />
+                    <span>${escapeHtml(config.label)}</span>
+                </label>
+            `).join("");
+            grid.querySelectorAll("[data-column-key]").forEach((input) => input.addEventListener("change", (event) => {
+                const key = event.target.dataset.columnKey;
+                if (event.target.checked) {
+                    if (!state.tableColumns.includes(key)) state.tableColumns.push(key);
+                } else {
+                    if (state.tableColumns.length === 1) {
+                        event.target.checked = true;
+                        return;
+                    }
+                    state.tableColumns = state.tableColumns.filter((item) => item !== key);
+                }
+                renderEventsTable();
+            }));
+        }
+        function toggleQueryHelpPanel(forceExpanded = null) {
+            state.queryHelpCollapsed = typeof forceExpanded === "boolean" ? !forceExpanded : !state.queryHelpCollapsed;
+            const panel = document.getElementById("query-help-panel");
+            const button = document.getElementById("toggle-query-help-btn");
+            panel.classList.toggle("collapsed", state.queryHelpCollapsed);
+            button.textContent = state.queryHelpCollapsed ? "expand" : "collapse";
+        }
+        function renderPayloadLineageMiniGraph(lineage, fallbackEvent = null) {
+            if (!lineage) return `<div class="empty-state">No payload lineage loaded.</div>`;
+            const nodes = [];
+            if (lineage.parent_event?.payload_hash) nodes.push({ type: "parent", event: lineage.parent_event });
+            if (lineage.root_event?.payload_hash) nodes.push({ type: "current", event: lineage.root_event });
+            (lineage.child_events || []).slice(0, 3).forEach((event) => nodes.push({ type: "child", event }));
+            if (!nodes.length && fallbackEvent?.payload_hash) nodes.push({ type: "current", event: fallbackEvent });
+            if (!nodes.length) return `<div class="empty-state">No payload lineage loaded.</div>`;
+            return `<div class="lineage-graph">${nodes.map((node, index) => `
+                ${index ? `<div class="lineage-arrow">→</div>` : ""}
+                <div class="lineage-node ${node.type === "current" ? "current" : ""}">
+                    <div class="node-title">${escapeHtml(node.type)}</div>
+                    <div class="node-hash">${escapeHtml(node.event.payload_hash || "(empty)")}</div>
+                    <div class="small">mutation=${escapeHtml(node.event.mutation_type || "(none)")} | decode=${escapeHtml(node.event.decode_status || "(none)")}</div>
+                    <div class="small">v=${escapeHtml(node.event.mutation_v ?? "-")} | family=${escapeHtml(node.event.semantic_family || "(empty)")}</div>
+                    <div class="small">${escapeHtml(`${node.event.src || "?"} -> ${node.event.dst || "?"}`)}</div>
+                    ${node.event.decoded_payload_preview ? `<div class="small">decoded=${escapeHtml(compactPreview(node.event.decoded_payload_preview || "", 70))}</div>` : ""}
+                </div>
+            `).join("")}</div>`;
+        }
+        function openPayloadModal(text, title = "full payload view") {
+            const titleNode = document.querySelector("#payload-modal .modal-head span");
+            if (titleNode) titleNode.textContent = title;
+            document.getElementById("payload-modal-body").textContent = text || "(payload unavailable)";
+            document.getElementById("payload-modal").classList.add("open");
+        }
+        function closePayloadModal() {
+            document.getElementById("payload-modal").classList.remove("open");
+        }
+        function renderDetailPayloadPreview(event) {
+            const container = document.getElementById("detail-payload-preview-container");
+            if (!event) {
+                container.innerHTML = `<div class="payload-box" id="detail-payload-preview">(no payload selected)</div>`;
+                return;
+            }
+            const rawPreview = escapeHtml(event.payload_preview || "Payload unavailable for this event.");
+            const decodedPreview = escapeHtml(event.decoded_payload_preview || "No decoded payload preview available.");
+            if (state.detailPayloadView === "decoded") {
+                container.innerHTML = `
+                    <div class="payload-box">
+                        <div class="small">decoded / derived</div>
+                        <div style="margin-top:6px;">${decodedPreview}</div>
+                    </div>`;
+                return;
+            }
+            if (state.detailPayloadView === "side") {
+                container.innerHTML = `
+                    <div class="payload-preview-split">
+                        <div class="payload-box">
+                            <div class="small">raw</div>
+                            <div style="margin-top:6px;">${rawPreview}</div>
+                        </div>
+                        <div class="payload-box">
+                            <div class="small">decoded / derived</div>
+                            <div style="margin-top:6px;">${decodedPreview}</div>
+                        </div>
+                    </div>`;
+                return;
+            }
+            container.innerHTML = `
+                <div class="payload-box">
+                    <div class="small">raw</div>
+                    <div style="margin-top:6px;">${rawPreview}</div>
+                </div>`;
+        }
         function renderTableCard(label, columns, rows) {
             return `
                 <div class="metric">
@@ -979,12 +1607,165 @@
                         <table class="stat-table">
                             <thead><tr>${columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}</tr></thead>
                             <tbody>
-                                ${rows.map((row) => `<tr>${columns.map((column) => `<td>${formatCell(column.render ? column.render(row) : row[column.key])}</td>`).join("")}</tr>`).join("")}
+                                ${rows.map((row) => `<tr>${columns.map((column) => {
+                                    const value = column.render ? column.render(row) : row[column.key];
+                                    return `<td>${column.html ? (value ?? "") : formatCell(value)}</td>`;
+                                }).join("")}</tr>`).join("")}
                             </tbody>
                         </table>
                     ` : `<div class="empty-state">No results for this view.</div>`}
                 </div>
             `;
+        }
+        function renderPhase3Presets() {
+            const presets = state.queryHelp?.phase3_presets || [];
+            const node = document.getElementById("query-help-phase3");
+            if (!node) return;
+            node.innerHTML = presets.length ? presets.map((item) => `
+                <div class="help-example">
+                    <div>
+                        <div class="small">${escapeHtml(item.context || "search")}</div>
+                        <code>${escapeHtml(item.label)}</code>
+                    </div>
+                    <button data-phase3-query="${escapeHtml(item.query)}">run</button>
+                </div>
+            `).join("") : `<div class="empty-state">No Phase 3 presets loaded.</div>`;
+            node.querySelectorAll("[data-phase3-query]").forEach((button) => button.addEventListener("click", () => {
+                setStructuredQuery(button.dataset.phase3Query || "");
+                runSearch().catch((error) => addError(`phase3 preset failed: ${error.message}`));
+            }));
+        }
+        function renderDecisionSummary() {
+            const node = document.getElementById("detail-decision-summary");
+            const summary = state.decisionSummary?.summary;
+            if (!summary) {
+                node.innerHTML = `<div class="empty-state">Select a reasoning-heavy event to expose strategy, mutation, confidence, and rationale.</div>`;
+                return;
+            }
+            const diffMessages = state.decisionSummary?.diff?.messages || [];
+            node.innerHTML = `
+                <div class="hint-item">why this attack: ${escapeHtml(summary.quick_explanation || "(empty)")}</div>
+                <div class="hint-item">strategy=${escapeHtml(summary.strategy_family || "(empty)")} | technique=${escapeHtml(summary.technique || "(empty)")} | mutation=${escapeHtml(summary.mutation_type || "(empty)")} | phase=${escapeHtml(summary.phase || "(empty)")}</div>
+                <div class="hint-item">objective=${escapeHtml(summary.objective || "(empty)")} | knowledge=${escapeHtml(summary.knowledge_source || "(empty)")} | confidence=${escapeHtml(summary.knowledge_confidence ?? "-")}</div>
+                <div class="hint-item">resistance=${escapeHtml(summary.inferred_target_resistance ?? "-")} | prior_success=${escapeHtml(summary.prior_success_rate ?? "-")} | runtime_override=${escapeHtml(summary.runtime_override ? "yes" : "no")}</div>
+                <div class="hint-item">rationale=${escapeHtml(summary.rationale || "(empty)")}</div>
+                <div class="hint-item">what changed: ${escapeHtml(diffMessages.join(" "))}</div>
+                <div class="detail-block">${escapeHtml(pretty(summary.score_breakdown || {}))}</div>
+            `;
+        }
+        function renderSuggestions() {
+            const node = document.getElementById("detail-suggestions");
+            const suggestions = state.decisionSupport?.suggestions || [];
+            if (!suggestions.length) {
+                node.innerHTML = `<div class="empty-state">Select an event to generate deterministic next-step pivots.</div>`;
+                return;
+            }
+            node.innerHTML = suggestions.map((item) => `
+                <div class="hint-item">
+                    <div>${escapeHtml(item.title || "suggested pivot")}</div>
+                    <div class="small" style="margin-top:6px;">${escapeHtml(item.reason || "")}</div>
+                    ${item.query ? `<div class="small" style="margin-top:6px;"><button data-suggestion-query="${escapeHtml(item.query)}">run pivot</button></div>` : ""}
+                </div>
+            `).join("");
+            node.querySelectorAll("[data-suggestion-query]").forEach((button) => button.addEventListener("click", () => {
+                setStructuredQuery(button.dataset.suggestionQuery || "");
+                runSearch().catch((error) => addError(`suggested pivot failed: ${error.message}`));
+            }));
+        }
+        function renderIntelligence() {
+            const node = document.getElementById("intelligence-view");
+            if (!state.searchHasRun) {
+                node.innerHTML = `<div class="empty-state">Run a search, then open Intelligence to load Phase 3 analytics.</div>`;
+                return;
+            }
+            const mutation = state.mutationAnalytics || { leaderboard: [], by_target: [], timeline: [], warnings: [] };
+            const strategy = state.strategyAnalytics || { leaderboard: [], strategy_mutation_combinations: [], recent_strategy_shifts: [], warnings: [] };
+            const families = state.payloadFamilies || { families: [], warnings: [] };
+            const campaigns = state.campaignList?.campaigns || [];
+            node.innerHTML = `
+                <div class="metric" style="grid-column: 1 / -1;">
+                    <div class="label">Phase 3 scope</div>
+                    <div class="summary-grid">
+                        <div class="summary-card"><div class="title">mutation families</div><div class="num">${escapeHtml(formatNumber(mutation.summary?.mutation_family_count || 0))}</div></div>
+                        <div class="summary-card"><div class="title">top mutation</div><div class="num">${escapeHtml(mutation.summary?.top_family || "(empty)")}</div></div>
+                        <div class="summary-card"><div class="title">strategy families</div><div class="num">${escapeHtml(formatNumber(strategy.summary?.strategy_family_count || 0))}</div></div>
+                        <div class="summary-card"><div class="title">top strategy</div><div class="num">${escapeHtml(strategy.summary?.top_strategy_family || "(empty)")}</div></div>
+                        <div class="summary-card"><div class="title">payload families</div><div class="num">${escapeHtml(formatNumber((families.families || []).length))}</div></div>
+                        <div class="summary-card"><div class="title">campaigns</div><div class="num">${escapeHtml(formatNumber(campaigns.length))}</div></div>
+                    </div>
+                    ${(mutation.warnings || []).concat(strategy.warnings || []).concat(families.warnings || []).map((warning) => `<div class="hint-item warn" style="margin-top:10px;">${escapeHtml(warning)}</div>`).join("")}
+                </div>
+                ${renderTableCard("mutation leaderboard", [
+                    { key: "mutation_type", label: "mutation" },
+                    { key: "total_attempts", label: "attempts", render: (row) => formatNumber(row.total_attempts) },
+                    { key: "total_successes", label: "success", render: (row) => formatNumber(row.total_successes) },
+                    { key: "success_rate", label: "rate", render: (row) => formatPercent(row.success_rate) },
+                    { key: "avg_lineage_depth", label: "depth" },
+                ], mutation.leaderboard || [])}
+                ${renderTableCard("mutation by target", [
+                    { key: "mutation_type", label: "mutation" },
+                    { key: "target", label: "target" },
+                    { key: "attempts", label: "attempts", render: (row) => formatNumber(row.attempts) },
+                    { key: "success_rate", label: "rate", render: (row) => formatPercent(row.success_rate) },
+                ], (mutation.by_target || []).slice(0, 12))}
+                ${renderTableCard("strategy leaderboard", [
+                    { key: "strategy_family", label: "strategy" },
+                    { key: "attempts", label: "attempts", render: (row) => formatNumber(row.attempts) },
+                    { key: "successes", label: "success", render: (row) => formatNumber(row.successes) },
+                    { key: "success_rate", label: "rate", render: (row) => formatPercent(row.success_rate) },
+                ], strategy.leaderboard || [])}
+                ${renderTableCard("strategy x mutation", [
+                    { key: "strategy_family", label: "strategy" },
+                    { key: "mutation_type", label: "mutation" },
+                    { key: "attempts", label: "attempts", render: (row) => formatNumber(row.attempts) },
+                    { key: "success_rate", label: "rate", render: (row) => formatPercent(row.success_rate) },
+                ], (strategy.strategy_mutation_combinations || []).slice(0, 12))}
+                ${renderTableCard("payload families", [
+                    { key: "semantic_family", label: "family" },
+                    { key: "root_payload_hash", label: "root" },
+                    { key: "payload_hash_count", label: "hashes", render: (row) => formatNumber(row.payload_hash_count) },
+                    { key: "success_rate", label: "rate", render: (row) => formatPercent(row.success_rate) },
+                    { key: "mutation_diversity", label: "mut_div", render: (row) => formatNumber(row.mutation_diversity) },
+                ], (families.top_payload_families || []).slice(0, 12))}
+                ${renderTableCard("recent campaigns", [
+                    { key: "campaign_id", label: "campaign_id" },
+                    { key: "objective", label: "objective" },
+                    { key: "total_events", label: "events", render: (row) => formatNumber(row.total_events) },
+                    { key: "final_outcome", label: "outcome" },
+                    { key: "highest_hop_reached", label: "hop", render: (row) => formatNumber(row.highest_hop_reached) },
+                    { key: "campaign_id", label: "open", html: true, render: (row) => row.campaign_id ? `<button data-open-campaign="${escapeHtml(row.campaign_id)}">open</button>` : "" },
+                ], campaigns.slice(0, 10))}
+            `;
+            node.querySelectorAll("[data-open-campaign]").forEach((button) => button.addEventListener("click", () => {
+                loadCampaign(button.dataset.openCampaign || "").catch((error) => addError(`campaign open failed: ${error.message}`));
+                switchView("search");
+            }));
+            node.querySelectorAll("[data-search-pivot]").forEach((button) => button.addEventListener("click", () => {
+                setStructuredQuery(button.dataset.searchPivot || "");
+                runSearch().catch((error) => addError(`intelligence pivot failed: ${error.message}`));
+            }));
+        }
+        function setSearchGuardrail(messages) {
+            const node = document.getElementById("search-guardrail");
+            if (!messages || !messages.length) {
+                node.style.display = "none";
+                node.textContent = "";
+                return;
+            }
+            node.style.display = "block";
+            node.textContent = messages.join(" ");
+        }
+        function setSearchLoading(active, message = "Searching...") {
+            state.searchBusy = active;
+            document.getElementById("search-status").textContent = message;
+            document.getElementById("search-elapsed-meta").textContent = active ? "search: running" : document.getElementById("search-elapsed-meta").textContent;
+            if (active) {
+                document.getElementById("events-table-wrap").innerHTML = `<div class="empty-state">Loading search results...</div>`;
+                document.getElementById("timeline").innerHTML = "";
+                document.getElementById("fields-sidebar").innerHTML = `<div class="small">Loading fields...</div>`;
+                document.getElementById("selected-fields").innerHTML = `<div class="small">Loading query context...</div>`;
+                renderHints("result-hints", [], "Loading analytic hints...");
+            }
         }
         function quoteQueryValue(value) {
             const text = String(value ?? "");
@@ -1046,9 +1827,17 @@
                     <div class="trace-node-head">${escapeHtml(node.label)}</div>
                     <div class="trace-node-meta">
                         ts=${escapeHtml(node.event?.ts || "-")} | attack=${escapeHtml(node.event?.attack_type || "(empty)")} |
-                        v=${escapeHtml(node.event?.mutation_v ?? "-")} | hop=${escapeHtml(node.event?.hop_count ?? "-")} |
-                        outcome=${escapeHtml(node.event?.state_after || node.event?.event || "-")}
+                        v=${escapeHtml(node.event?.mutation_v ?? "-")} | mut=${escapeHtml(node.event?.mutation_type || "(empty)")} |
+                        hash=${escapeHtml(node.event?.payload_hash || "(empty)")} | hop=${escapeHtml(node.event?.hop_count ?? "-")} |
+                        changed=${escapeHtml(node.event?.payload_changed ? "yes" : "no")} | outcome=${escapeHtml(node.event?.state_after || node.event?.event || "-")}
                     </div>
+                    <div class="trace-node-meta">
+                        ${node.event?.decode_status ? `<span class="decode-badge">${escapeHtml(node.event.decode_status)}</span>` : ""}
+                        ${(node.event?.decode_chain || []).map((step) => `<span class="decode-badge">${escapeHtml(step)}</span>`).join("")}
+                        ${node.event?.payload_wrapper_type ? `<span class="decode-badge">${escapeHtml(node.event.payload_wrapper_type)}</span>` : ""}
+                    </div>
+                    <div class="trace-node-meta">raw=${escapeHtml(compactPreview(node.event?.payload_preview || "", 90))}</div>
+                    ${node.event?.has_decoded_payload ? `<div class="trace-node-meta">decoded=${escapeHtml(compactPreview(node.event?.decoded_payload_preview || "", 90))}</div>` : ""}
                     ${renderTraceTree(node.children || [], true)}
                 </div>
             `).join("")}</div>`;
@@ -1059,6 +1848,7 @@
         function setStructuredQuery(value) {
             document.getElementById("search-mode").value = "structured";
             document.getElementById("search-query").value = value;
+            scheduleQueryValidation();
         }
         function clearSelectedFilters() {
             setStructuredQuery("");
@@ -1111,30 +1901,58 @@
             document.querySelectorAll("#view-search .view").forEach((view) => {
                 if (view.id.startsWith("search-tab-")) view.classList.toggle("active", view.id === `search-tab-${name}`);
             });
+            if (!state.searchHasRun) return;
             if (name === "patterns" && !state.patterns) {
+                const requestId = ++state.patternRequestId;
+                document.getElementById("patterns-view").innerHTML = `<div class="empty-state">Loading patterns...</div>`;
                 state.patterns = await fetchJson(buildSearchPath("/api/patterns"));
+                if (requestId !== state.patternRequestId) return;
                 renderPatterns();
             }
             if (name === "statistics" && !state.stats) {
+                const requestId = ++state.statsRequestId;
+                document.getElementById("statistics-view").innerHTML = `<div class="empty-state">Loading preset statistics...</div>`;
                 const [statsPayload, presetPayload] = await Promise.all([
                     fetchJson(buildSearchPath("/api/stats")),
                     fetchJson(buildSearchPath("/api/stats/presets")),
                 ]);
+                if (requestId !== state.statsRequestId) return;
                 state.stats = statsPayload;
                 state.statsPresets = presetPayload;
                 renderStats();
             }
             if (name === "visualization") {
-                if (!state.patterns) state.patterns = await fetchJson(buildSearchPath("/api/patterns"));
+                document.getElementById("visualization-view").innerHTML = `<div class="empty-state">Loading visualization data...</div>`;
+                if (!state.patterns) {
+                    const requestId = ++state.patternRequestId;
+                    state.patterns = await fetchJson(buildSearchPath("/api/patterns"));
+                    if (requestId !== state.patternRequestId) return;
+                }
                 if (!state.stats) {
+                    const requestId = ++state.statsRequestId;
                     const [statsPayload, presetPayload] = await Promise.all([
                         fetchJson(buildSearchPath("/api/stats")),
                         fetchJson(buildSearchPath("/api/stats/presets")),
                     ]);
+                    if (requestId !== state.statsRequestId) return;
                     state.stats = statsPayload;
                     state.statsPresets = presetPayload;
                 }
                 renderVisualization();
+            }
+            if (name === "intelligence") {
+                document.getElementById("intelligence-view").innerHTML = `<div class="empty-state">Loading Phase 3 intelligence...</div>`;
+                const [mutationPayload, strategyPayload, familyPayload, campaignsPayload] = await Promise.all([
+                    fetchJson(buildSearchPath("/api/mutation-analytics")),
+                    fetchJson(buildSearchPath("/api/strategy-analytics")),
+                    fetchJson(buildSearchPath("/api/payload-families")),
+                    fetchJson(buildSearchPath("/api/campaigns")),
+                ]);
+                state.mutationAnalytics = mutationPayload;
+                state.strategyAnalytics = strategyPayload;
+                state.payloadFamilies = familyPayload;
+                state.campaignList = campaignsPayload;
+                renderIntelligence();
             }
         }
 
@@ -1153,12 +1971,177 @@
             return response.json();
         }
 
+        async function loadRuns() {
+            const statusEl = document.getElementById("run-selector-status");
+            const cardsEl = document.getElementById("run-cards");
+            try {
+                const data = await fetchJson("/api/runs");
+                const runs = data.runs || [];
+                if (!runs.length) {
+                    cardsEl.innerHTML = `<div class="empty-state">No soak runs found in logs/. Run a 6-hour soak to populate this library.</div>`;
+                    statusEl.textContent = "no runs found";
+                    return;
+                }
+                statusEl.textContent = `${runs.length} run${runs.length !== 1 ? "s" : ""} available`;
+                cardsEl.innerHTML = runs.map((run) => {
+                    const statusClass = run.status === "completed" ? "ok" : run.status === "failed" ? "err" : "warn";
+                    const statusLabel = run.status || "unknown";
+                    const blockPct = run.block_ratio != null ? ` · ${Math.round(run.block_ratio * 100)}% blocked` : "";
+                    const evtLabel = run.event_count ? ` · ${run.event_count.toLocaleString()} events` : "";
+                    const dateLabel = run.start_time ? ` · ${run.start_time.slice(0, 10)}` : "";
+                    return `
+                    <div class="run-card" id="run-card-${escapeHtml(run.id)}">
+                        <div class="run-info">
+                            <div class="run-label">${escapeHtml(run.label)}</div>
+                            <div class="run-meta">${escapeHtml(dateLabel + evtLabel + blockPct)}</div>
+                        </div>
+                        <span class="run-status-badge ${statusClass}">${escapeHtml(statusLabel)}</span>
+                        ${run.has_events
+                            ? `<button class="run-load-btn" onclick="loadRunIntoSiem(${JSON.stringify(run.id)}, ${JSON.stringify(run.events_path)}, this)">Load</button>`
+                            : `<span class="small" style="color:var(--muted)">no events</span>`}
+                    </div>`;
+                }).join("");
+            } catch (err) {
+                statusEl.textContent = "failed to load runs";
+                cardsEl.innerHTML = `<div class="empty-state">Could not reach /api/runs: ${escapeHtml(err.message)}</div>`;
+            }
+        }
+
+        async function loadRunIntoSiem(runId, eventsPath, btn) {
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = "Loading…";
+            const card = document.getElementById(`run-card-${runId}`);
+            try {
+                const result = await postJson("/api/import", { source: "jsonl", path: eventsPath, source_name: runId });
+                const inserted = result.inserted ?? result.count ?? "?";
+                btn.textContent = `✓ ${inserted} events`;
+                btn.disabled = false;
+                if (card) card.classList.add("active-run");
+                addError(`Loaded ${inserted} events from ${runId} into SIEM.`);
+            } catch (err) {
+                btn.textContent = originalText;
+                btn.disabled = false;
+                addError(`Failed to load ${runId}: ${err.message}`);
+            }
+        }
+
         async function loadControl() {
             const [control, health] = await Promise.all([fetchJson("/dashboard/state"), fetchJson("/api/health")]);
             state.control = control;
             state.health = health;
             renderControl();
             renderStatus();
+        }
+
+        async function loadQueryHelp() {
+            state.queryHelp = await fetchJson("/api/query-help");
+            renderQueryHelp();
+        }
+
+        function renderQueryHelp() {
+            const help = state.queryHelp || { supported_fields: [], operators: [], examples: {}, metadata_access: [], time_ranges: [], soc_use_cases: [], notes: [] };
+            document.getElementById("query-help-summary").textContent = `${help.supported_fields.length || 0} fields, lightweight structured syntax`;
+            document.getElementById("query-help-operators").innerHTML = (help.operators || []).map((item) => `
+                <div class="help-example">
+                    <div><div class="operator-code">${escapeHtml(item.syntax)}</div><div class="small">${escapeHtml(item.description)}</div></div>
+                </div>
+            `).join("") || `<div class="empty-state">No operator guide loaded.</div>`;
+            document.getElementById("query-help-time").innerHTML = [
+                ...(help.time_ranges || []).map((item) => `<div class="help-example"><div><code>${escapeHtml(item)}</code></div></div>`),
+                ...(help.notes || []).map((item) => `<div class="help-example"><div class="small">${escapeHtml(item)}</div></div>`),
+                `<div class="help-example"><div class="small">Broad queries without narrowing filters may trigger a full dataset scan warning.</div></div>`,
+            ].join("");
+            document.getElementById("query-help-metadata").innerHTML = (help.metadata_access || []).map((item) => `
+                <div class="help-example">
+                    <div><code>${escapeHtml(item)}</code></div>
+                    <button data-help-query="${escapeHtml(item)} exists">use</button>
+                </div>
+            `).join("") || `<div class="empty-state">No metadata examples loaded.</div>`;
+            document.getElementById("query-help-fields").innerHTML = (help.supported_fields || []).slice(0, 16).map((item) => `
+                <div class="help-example">
+                    <div><code>${escapeHtml(item)}</code></div>
+                    <button data-help-query="${escapeHtml(item)}=">insert</button>
+                </div>
+            `).join("") || `<div class="empty-state">No fields loaded.</div>`;
+            const examples = [];
+            Object.entries(help.examples || {}).forEach(([group, queries]) => {
+                (queries || []).forEach((query) => examples.push({ group, query }));
+            });
+            document.getElementById("query-help-examples").innerHTML = examples.map((item) => `
+                <div class="help-example">
+                    <div>
+                        <div class="small">${escapeHtml(item.group)}</div>
+                        <code>${escapeHtml(item.query)}</code>
+                    </div>
+                    <button data-run-example="${escapeHtml(item.query)}">run</button>
+                </div>
+            `).join("") || `<div class="empty-state">No examples loaded.</div>`;
+            document.getElementById("query-help-soc").innerHTML = (help.soc_use_cases || []).map((item) => `
+                <div class="help-example">
+                    <div>
+                        <div class="small">${escapeHtml(item.title)}</div>
+                        <code>${escapeHtml(item.query)}</code>
+                    </div>
+                    <button data-run-example="${escapeHtml(item.query)}">run</button>
+                </div>
+            `).join("") || `<div class="empty-state">No SOC examples loaded.</div>`;
+
+            const datalist = document.getElementById("query-field-options");
+            datalist.innerHTML = (help.supported_fields || []).map((item) => `<option value="${escapeHtml(item)}"></option>`).join("");
+            document.querySelectorAll("[data-run-example]").forEach((button) => button.addEventListener("click", () => {
+                setStructuredQuery(button.dataset.runExample || "");
+                runSearch().catch((error) => addError(`example query failed: ${error.message}`));
+            }));
+            document.querySelectorAll("[data-help-query]").forEach((button) => button.addEventListener("click", () => {
+                const snippet = button.dataset.helpQuery || "";
+                const current = document.getElementById("search-query").value.trim();
+                document.getElementById("search-query").value = current ? `${current} AND ${snippet}` : snippet;
+                scheduleQueryValidation();
+            }));
+            renderPhase3Presets();
+        }
+
+        function renderQueryFeedback() {
+            const node = document.getElementById("query-feedback");
+            const validation = state.queryValidation;
+            if (!validation) {
+                node.className = "query-feedback";
+                node.textContent = "Validation idle.";
+                return;
+            }
+            if (!validation.valid) {
+                node.className = "query-feedback error";
+                node.textContent = `Invalid query: ${validation.error}`;
+                return;
+            }
+            if (validation.warnings?.length) {
+                node.className = "query-feedback warn";
+                node.textContent = validation.warnings.join(" ");
+                return;
+            }
+            node.className = "query-feedback good";
+            node.textContent = "Query syntax is valid.";
+        }
+
+        async function validateQuery() {
+            const params = new URLSearchParams();
+            params.set("q", document.getElementById("search-query").value.trim());
+            params.set("mode", document.getElementById("search-mode").value);
+            params.set("time_range", document.getElementById("time-range").value);
+            state.queryValidation = await fetchJson(`/api/validate-query?${params.toString()}`);
+            renderQueryFeedback();
+            return state.queryValidation;
+        }
+
+        function scheduleQueryValidation() {
+            if (state.validateTimer) clearTimeout(state.validateTimer);
+            state.validateTimer = setTimeout(() => {
+                validateQuery().catch((error) => {
+                    state.queryValidation = { valid: false, error: error.message, warnings: [] };
+                    renderQueryFeedback();
+                });
+            }, 180);
         }
 
         function renderControl() {
@@ -1190,48 +2173,111 @@
         }
 
         async function runSearch() {
-            const [searchPayload, hintsPayload] = await Promise.all([
-                fetchJson(buildSearchPath("/api/search")),
-                fetchJson(buildSearchPath("/api/hints")),
-            ]);
+            const validation = await validateQuery();
+            if (!validation.valid) {
+                setSearchLoading(false, "Search blocked by query validation.");
+                return;
+            }
+            const requestId = ++state.searchRequestId;
+            setSearchLoading(true);
+            setSearchGuardrail(validation.warnings || []);
+            const searchPayload = await fetchJson(buildSearchPath("/api/search"));
+            if (requestId !== state.searchRequestId) return;
+            state.searchHasRun = true;
             state.search = searchPayload;
-            state.resultHints = hintsPayload.hints || [];
+            state.resultHints = [];
             state.patterns = null;
             state.stats = null;
             state.statsPresets = null;
-            state.selectedEvent = searchPayload.events[0] || null;
+            state.selectedEvent = null;
+            state.eventDetail = null;
             state.related = null;
             state.trace = null;
+            state.payloadLineage = null;
+            state.decisionSummary = null;
+            state.decisionSupport = null;
+            state.mutationAnalytics = null;
+            state.strategyAnalytics = null;
+            state.payloadFamilies = null;
+            state.campaignDetail = null;
             state.investigation = null;
             renderSearch();
-            if (state.selectedEvent) {
-                await Promise.all([loadTrace(state.selectedEvent.event_id), loadRelated(state.selectedEvent.event_id)]);
+            document.getElementById("detail-trace").textContent = "(no trace loaded)";
+            document.getElementById("detail-related").innerHTML = `<div class="empty-state">Select an event to load related events.</div>`;
+            document.getElementById("detail-hints").innerHTML = `<div class="empty-state">Select an event to load trace-specific hints.</div>`;
+            setSearchLoading(false, `Search completed in ${Number(searchPayload.elapsed_ms || 0).toFixed(2)} ms.`);
+            if (searchPayload.auto_analytics_allowed) {
+                const hintRequestId = ++state.hintRequestId;
+                renderHints("result-hints", [], "Loading analytic hints...");
+                fetchJson(buildSearchPath("/api/hints")).then((hintsPayload) => {
+                    if (requestId !== state.searchRequestId || hintRequestId !== state.hintRequestId) return;
+                    state.resultHints = hintsPayload.hints || [];
+                    renderHints("result-hints", state.resultHints, "No analytic hints for the current result set.");
+                }).catch((error) => addError(`hints load failed: ${error.message}`));
             } else {
-                document.getElementById("detail-trace").textContent = "(no trace loaded)";
+                renderHints("result-hints", [], "Analytics deferred until the result set is narrower.");
             }
             renderStatus();
         }
 
         function renderSearch() {
             document.getElementById("structured-query").textContent = `structured query: ${state.search.structured_query || "(empty)"}`;
-            document.getElementById("search-summary").textContent = `${state.search.total || 0} events`;
-            document.getElementById("search-count-meta").textContent = `events: ${state.search.total || 0}`;
+            document.getElementById("search-summary").textContent = state.searchHasRun ? `${state.search.total || 0} events` : "no search run";
+            document.getElementById("search-count-meta").textContent = `events: ${state.searchHasRun ? (state.search.total || 0) : 0}`;
             document.getElementById("search-window-meta").textContent = `window: ${document.getElementById("time-range").selectedOptions[0]?.textContent || "all time"}`;
             document.getElementById("search-mode-meta").textContent = `mode: ${document.getElementById("search-mode").value}`;
             document.getElementById("search-last-meta").textContent = `latest: ${state.search.events?.[0]?.ts || "-"}`;
+            document.getElementById("search-elapsed-meta").textContent = state.searchHasRun ? `search: ${state.search.elapsed_ms ?? 0} ms` : "search: idle";
+            document.getElementById("search-status").textContent = state.searchHasRun ? `Search completed in ${Number(state.search.elapsed_ms || 0).toFixed(2)} ms.` : "Search idle. Run a query to load results.";
             document.getElementById("trace-scope-meta").textContent = `trace: ${state.trace?.scope_reason || "none"}`;
+            setSearchGuardrail(state.search.warnings || []);
+            renderQueryFeedback();
             renderQuickFilters();
             renderSelectedFields();
             renderFields();
+            renderColumnSelector();
             renderTimeline();
-            renderHints("result-hints", state.resultHints, "No analytic hints for the current result set.");
+            renderHints("result-hints", state.resultHints, state.searchHasRun ? "No analytic hints for the current result set." : "Run a search to load analytic hints.");
             renderEventsTable();
             renderPatterns();
             renderStats();
             renderVisualization();
+            renderIntelligence();
             renderDetail();
         }
+        function renderInvestigationQueryHelp() {
+            const node = document.getElementById("investigation-query-help");
+            if (!state.investigation || !state.selectedEvent) {
+                node.innerHTML = `<div class="empty-state">Open an investigation to generate scoped query pivots.</div>`;
+                return;
+            }
+            const event = state.selectedEvent;
+            const examples = [
+                { label: "same campaign", query: event.metadata?.campaign_id ? `campaign_id=${quoteQueryValue(event.metadata.campaign_id)}` : "" },
+                { label: "same injection", query: event.injection_id ? `injection_id=${quoteQueryValue(event.injection_id)}` : "" },
+                { label: "same target", query: event.dst ? `dst=${quoteQueryValue(event.dst)}` : "" },
+                { label: "same technique", query: event.metadata?.technique ? `technique=${quoteQueryValue(event.metadata.technique)}` : "" },
+            ].filter((item) => item.query);
+            node.innerHTML = examples.map((item) => `
+                <div class="help-example">
+                    <div>
+                        <div class="small">${escapeHtml(item.label)}</div>
+                        <code>${escapeHtml(item.query)}</code>
+                    </div>
+                    <button data-investigation-query="${escapeHtml(item.query)}">run</button>
+                </div>
+            `).join("") || `<div class="empty-state">No scoped pivots available.</div>`;
+            node.querySelectorAll("[data-investigation-query]").forEach((button) => button.addEventListener("click", () => {
+                switchView("search");
+                setStructuredQuery(button.dataset.investigationQuery || "");
+                runSearch().catch((error) => addError(`investigation query failed: ${error.message}`));
+            }));
+        }
         function renderSelectedFields() {
+            if (!state.searchHasRun) {
+                document.getElementById("selected-fields").innerHTML = `<div class="small">Run a search to populate selected fields.</div>`;
+                return;
+            }
             const selected = parseSelectedFields(currentSearchText());
             const target = document.getElementById("selected-fields");
             if (!selected.length) {
@@ -1257,6 +2303,10 @@
         }
         function renderFields() {
             const sidebar = document.getElementById("fields-sidebar");
+            if (!state.searchHasRun) {
+                sidebar.innerHTML = `<div class="small">Run a search to populate interesting fields.</div>`;
+                return;
+            }
             sidebar.innerHTML = Object.entries(state.search.interesting_fields || {}).map(([field, values]) => `
                 <div class="field-group">
                     <div class="field-title"><span>${escapeHtml(field)}</span><span>${escapeHtml((values || []).length)} values</span></div>
@@ -1271,6 +2321,10 @@
             }));
         }
         function renderTimeline() {
+            if (!state.searchHasRun) {
+                document.getElementById("timeline").innerHTML = "";
+                return;
+            }
             const timeline = state.search.timeline || [];
             const max = Math.max(1, ...timeline.map((item) => item.count || 0));
             const step = Math.max(1, Math.ceil(timeline.length / 8));
@@ -1283,22 +2337,48 @@
         function renderEventsTable() {
             const rows = state.search.events || [];
             const wrap = document.getElementById("events-table-wrap");
+            const columns = getActiveColumnDefs();
+            if (!state.searchHasRun) {
+                wrap.innerHTML = `<div class="empty-state">Run a search to load events.</div>`;
+                return;
+            }
+            if (!rows.length) {
+                wrap.innerHTML = `<div class="empty-state">No events matched the current search.</div>`;
+                return;
+            }
             wrap.innerHTML = `
-                <table><thead><tr><th>ts</th><th>event</th><th>src → dst</th><th>attack_type</th><th>attack_strength</th><th>state_after</th><th>mutation_v</th><th>hop_count</th><th>reset_id</th><th>epoch</th><th>injection_id</th></tr></thead>
-                <tbody>${rows.map((event) => `
-                    <tr class="row ${state.selectedEvent?.event_id === event.event_id ? "selected" : ""}" data-event-id="${escapeHtml(event.event_id)}">
-                        <td>${escapeHtml(event.ts)}</td><td>${escapeHtml(event.event)}</td><td>${escapeHtml(`${event.src || "?"} -> ${event.dst || "?"}`)}</td><td>${escapeHtml(event.attack_type || "")}</td>
-                        <td>${escapeHtml(event.attack_strength ?? "")}</td><td>${escapeHtml(event.state_after || "")}</td><td>${escapeHtml(event.mutation_v ?? "")}</td><td>${escapeHtml(event.hop_count ?? "")}</td>
-                        <td>${escapeHtml(event.reset_id || "")}</td><td>${escapeHtml(event.epoch ?? "")}</td><td>${escapeHtml(event.injection_id || "")}</td>
-                    </tr>`).join("")}</tbody></table>`;
+                <table>
+                    <thead>
+                        <tr>${columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}</tr>
+                    </thead>
+                    <tbody>${rows.map((event) => `
+                        <tr class="row ${state.selectedEvent?.event_id === event.event_id ? "selected" : ""}" data-event-id="${escapeHtml(event.event_id)}">
+                            ${columns.map((column) => `<td>${column.render(event)}</td>`).join("")}
+                        </tr>`).join("")}
+                    </tbody>
+                </table>`;
             wrap.querySelectorAll("[data-event-id]").forEach((row) => row.addEventListener("click", async () => {
                 state.selectedEvent = rows.find((item) => item.event_id === row.dataset.eventId) || null;
+                state.eventDetail = null;
+                state.payloadLineage = null;
                 renderEventsTable();
                 renderDetail();
-                await Promise.all([loadTrace(row.dataset.eventId), loadRelated(row.dataset.eventId)]);
+                await Promise.all([
+                    loadEventDetail(row.dataset.eventId),
+                    loadTrace(row.dataset.eventId),
+                    loadRelated(row.dataset.eventId),
+                    loadDecisionSummary(row.dataset.eventId),
+                    (state.selectedEvent?.payload_hash ? loadPayloadLineage(state.selectedEvent.payload_hash) : Promise.resolve()),
+                    (state.selectedEvent?.metadata?.campaign_id ? loadCampaign(state.selectedEvent.metadata.campaign_id) : Promise.resolve()),
+                ]);
+                await loadDecisionSupport();
             }));
         }
         function renderPatterns() {
+            if (!state.searchHasRun) {
+                document.getElementById("patterns-view").innerHTML = `<div class="empty-state">Run a search, then open Patterns to load derived analytics.</div>`;
+                return;
+            }
             const patterns = state.patterns || { route_patterns: [], suppression_patterns: [], mutation_sequences: [] };
             const renderPatternList = (items, renderer, emptyText) => {
                 if (!items.length) return `<div class="empty-state">${escapeHtml(emptyText)}</div>`;
@@ -1400,6 +2480,11 @@
                     { key: "hop_count", label: "hop" },
                     { key: "count", label: "count", render: (row) => formatNumber(row.count) },
                 ], patterns.unresolved_attempt_patterns || []),
+                renderTableCard("payload reuse", [
+                    { key: "payload_hash", label: "payload_hash" },
+                    { key: "semantic_family", label: "semantic_family" },
+                    { key: "count", label: "count", render: (row) => formatNumber(row.count) },
+                ], patterns.payload_reuse_patterns || []),
             ].join("");
             document.querySelectorAll("[data-pattern-pivot]").forEach((button) => button.addEventListener("click", () => {
                 setStructuredQuery(button.dataset.patternPivot || "");
@@ -1411,6 +2496,10 @@
             }));
         }
         function renderStats() {
+            if (!state.searchHasRun) {
+                document.getElementById("statistics-view").innerHTML = `<div class="empty-state">Run a search, then open Statistics to load preset analytics.</div>`;
+                return;
+            }
             const stats = state.stats || { count_by_event: [], count_by_attack_type: [], src_dst_frequency: [] };
             const presets = state.statsPresets?.primary?.presets || stats.presets || {};
             document.getElementById("statistics-view").innerHTML = `
@@ -1478,6 +2567,10 @@
             `;
         }
         function renderVisualization() {
+            if (!state.searchHasRun) {
+                document.getElementById("visualization-view").innerHTML = `<div class="empty-state">Run a search, then open Visualization to load derived charts.</div>`;
+                return;
+            }
             const stats = state.stats || { count_by_event: [] };
             const routes = (state.patterns?.route_patterns || []).slice(0, 6);
             const max = Math.max(1, ...((stats.count_by_event || []).map((item) => item.count || 0)));
@@ -1497,30 +2590,64 @@
                     ${events.length ? events.slice(0, 5).map((event) => `
                         <div class="related-item">
                             <div>${escapeHtml(event.ts || "-")} :: ${escapeHtml(event.event || "")}</div>
-                            <div class="small">${escapeHtml(`${event.src || "?"} -> ${event.dst || "?"}`)} | injection=${escapeHtml(event.injection_id || "(empty)")}</div>
+                            <div class="small">${escapeHtml(`${event.src || "?"} -> ${event.dst || "?"}`)} | injection=${escapeHtml(event.injection_id || "(empty)")} | hash=${escapeHtml(event.payload_hash || "(empty)")} | mut=${escapeHtml(event.mutation_type || "(empty)")}</div>
                         </div>
                     `).join("") : `<div class="empty-state">No events in this correlation group.</div>`}
                 </div>
             `).join("");
         }
         function renderDetail() {
-            const event = state.selectedEvent;
+            const event = state.eventDetail?.event || state.selectedEvent;
             if (!event) {
                 document.getElementById("event-detail-kv").innerHTML = "";
+                document.getElementById("detail-payload-summary").innerHTML = "";
+                document.getElementById("detail-decode-summary").innerHTML = "";
+                renderDetailPayloadPreview(null);
+                document.getElementById("detail-payload-lineage").textContent = "(no lineage loaded)";
+                document.getElementById("detail-decision-summary").innerHTML = `<div class="empty-state">Select a reasoning-heavy event to expose strategy, mutation, confidence, and rationale.</div>`;
+                document.getElementById("detail-suggestions").innerHTML = `<div class="empty-state">Select an event to generate deterministic next-step pivots.</div>`;
                 document.getElementById("detail-metadata").textContent = "(no event selected)";
                 document.getElementById("detail-raw").textContent = "(no event selected)";
-                document.getElementById("detail-related").innerHTML = `<div class="empty-state">No related events loaded.</div>`;
+                document.getElementById("detail-trace").textContent = "(no trace loaded)";
+                document.getElementById("detail-related").innerHTML = `<div class="empty-state">Select an event to load related events.</div>`;
+                document.getElementById("detail-hints").innerHTML = `<div class="empty-state">Select an event to load trace-specific hints.</div>`;
                 return;
             }
-            document.getElementById("event-detail-kv").innerHTML = [["event_id", event.event_id], ["event", event.event], ["src", event.src], ["dst", event.dst], ["reset_id", event.reset_id], ["injection_id", event.injection_id], ["epoch", event.epoch], ["source_type", event.source_type]].map(([key, value]) => `<div class="key">${escapeHtml(key)}</div><div>${escapeHtml(value ?? "")}</div>`).join("");
+            document.getElementById("event-detail-kv").innerHTML = [["event_id", event.event_id], ["event", event.event], ["src", event.src], ["dst", event.dst], ["reset_id", event.reset_id], ["injection_id", event.injection_id], ["epoch", event.epoch], ["source_type", event.source_type], ["has_payload", String(event.has_payload ?? false)]].map(([key, value]) => `<div class="key">${escapeHtml(key)}</div><div>${escapeHtml(value ?? "")}</div>`).join("");
+            document.getElementById("detail-payload-summary").innerHTML = [["payload_hash", event.payload_hash], ["parent_payload_hash", event.parent_payload_hash], ["payload_length", event.payload_length], ["semantic_family", event.semantic_family], ["mutation_type", event.mutation_type], ["mutation_v", event.mutation_v]].map(([key, value]) => `<div class="key">${escapeHtml(key)}</div><div>${escapeHtml(value ?? "")}</div>`).join("");
+            document.getElementById("detail-decode-summary").innerHTML = [["decode_status", event.decode_status], ["decode_confidence", event.decode_confidence], ["decode_chain", (event.decode_chain || []).join(" -> ")], ["prefix_tag", event.payload_prefix_tag], ["wrapper_type", event.payload_wrapper_type], ["decoded_available", String(event.has_decoded_payload ?? false)]].map(([key, value]) => `<div class="key">${escapeHtml(key)}</div><div>${escapeHtml(value ?? "")}</div>`).join("");
+            renderDetailPayloadPreview(event);
+            document.getElementById("payload-view-raw-btn").classList.toggle("active", state.detailPayloadView === "raw");
+            document.getElementById("payload-view-decoded-btn").classList.toggle("active", state.detailPayloadView === "decoded");
+            document.getElementById("payload-view-side-btn").classList.toggle("active", state.detailPayloadView === "side");
+            document.getElementById("detail-payload-lineage").innerHTML = state.payloadLineage ? `
+                <div class="small">related=${escapeHtml(state.payloadLineage.summary?.related_event_count ?? 0)} | children=${escapeHtml(state.payloadLineage.summary?.child_count ?? 0)} | depth=${escapeHtml(state.payloadLineage.summary?.lineage_depth ?? 0)}</div>
+                <div style="margin-top:8px;">${renderPayloadLineageMiniGraph(state.payloadLineage, event)}</div>
+                <div style="margin-top:8px;" class="detail-block">${escapeHtml((state.payloadLineage.transitions || []).map((item) => `${item.from_hash} -> ${item.to_hash} (${item.mutation_type || "no-mutation"}) [delta=${item.mutation_v_delta ?? "-"}]`).join("\n") || "No lineage transitions observed.")}</div>
+                ${(state.payloadLineage.warnings || []).map((warning) => `<div class="hint-item warn" style="margin-top:8px;">${escapeHtml(warning)}</div>`).join("")}
+            ` : "(no lineage loaded)";
             document.getElementById("detail-metadata").textContent = pretty(event.metadata);
             document.getElementById("detail-raw").textContent = pretty(event.raw_event);
-            renderHints("detail-hints", state.trace?.hints || [], "Select Trace or Related to enrich event-level hints.");
+            renderHints("detail-hints", [...(state.eventDetail?.warnings || []), ...(state.trace?.hints || [])].map((item) => typeof item === "string" ? ({ severity: "info", message: item }) : item), "Select Trace or Related to enrich event-level hints.");
+            renderDecisionSummary();
+            renderSuggestions();
             renderRelated();
+        }
+        async function loadEventDetail(eventId, includeFullPayload = false) {
+            if (!eventId) return;
+            try {
+                state.eventDetail = await fetchJson(`/api/event/${encodeURIComponent(eventId)}?include_full_payload=${includeFullPayload ? "true" : "false"}`);
+                await loadReasoningBundle(eventId);
+                renderDetail();
+                return state.eventDetail;
+            } catch (error) {
+                addError(`event detail lookup failed: ${error.message}`);
+            }
         }
         async function loadTrace(eventId) {
             if (!eventId) return;
             try {
+                document.getElementById("detail-trace").innerHTML = `<div class="empty-state">Loading trace...</div>`;
                 const payload = await fetchJson(`/api/trace/${encodeURIComponent(eventId)}`);
                 state.trace = payload;
                 document.getElementById("trace-scope-meta").textContent = `trace: ${payload.scope_reason || "loaded"}`;
@@ -1537,17 +2664,84 @@
         async function loadRelated(eventId) {
             if (!eventId) return;
             try {
+                document.getElementById("detail-related").innerHTML = `<div class="empty-state">Loading related events...</div>`;
                 state.related = await fetchJson(`/api/related/${encodeURIComponent(eventId)}`);
                 renderRelated();
             } catch (error) {
                 addError(`related lookup failed: ${error.message}`);
             }
         }
+        async function loadPayloadLineage(payloadHash) {
+            if (!payloadHash) return;
+            try {
+                document.getElementById("detail-payload-lineage").innerHTML = `<div class="empty-state">Loading payload lineage...</div>`;
+                state.payloadLineage = await fetchJson(`/api/payload-lineage/${encodeURIComponent(payloadHash)}`);
+                renderDetail();
+            } catch (error) {
+                addError(`payload lineage lookup failed: ${error.message}`);
+                document.getElementById("detail-payload-lineage").textContent = "(payload lineage unavailable)";
+            }
+        }
+        async function loadDecisionSummary(eventId) {
+            if (!eventId) return;
+            try {
+                state.decisionSummary = await fetchJson(`/api/decision-summary/${encodeURIComponent(eventId)}`);
+                renderDecisionSummary();
+            } catch (error) {
+                state.decisionSummary = null;
+                renderDecisionSummary();
+                addError(`decision summary lookup failed: ${error.message}`);
+            }
+        }
+        async function loadDecisionSupport() {
+            const event = state.eventDetail?.event || state.selectedEvent;
+            if (!event) return;
+            try {
+                const params = new URLSearchParams();
+                params.set("event_id", event.event_id || "");
+                if (event.payload_hash) params.set("payload_hash", event.payload_hash);
+                if (event.injection_id) params.set("injection_id", event.injection_id);
+                if (event.metadata?.campaign_id) params.set("campaign_id", event.metadata.campaign_id);
+                state.decisionSupport = await fetchJson(`/api/decision-support?${params.toString()}`);
+                renderSuggestions();
+            } catch (error) {
+                state.decisionSupport = null;
+                renderSuggestions();
+                addError(`decision support lookup failed: ${error.message}`);
+            }
+        }
+        async function loadCampaign(campaignId) {
+            if (!campaignId) return;
+            try {
+                state.campaignDetail = await fetchJson(`/api/campaign/${encodeURIComponent(campaignId)}`);
+                if (state.investigation) openInvestigation();
+                if (state.activeView === "search") {
+                    renderIntelligence();
+                }
+            } catch (error) {
+                addError(`campaign lookup failed: ${error.message}`);
+            }
+        }
+        async function loadReasoningBundle(eventId) {
+            if (!eventId) return;
+            const event = state.eventDetail?.event || state.selectedEvent;
+            if (!event) return;
+            const campaignId = event.metadata?.campaign_id || event.campaign_id || "";
+            await Promise.all([
+                loadDecisionSummary(eventId),
+                loadDecisionSupport(),
+                campaignId ? loadCampaign(campaignId) : Promise.resolve(),
+            ]);
+        }
         function openInvestigation() {
             if (!state.selectedEvent) return;
             const panel = document.getElementById("investigation-panel");
             const trace = state.trace || {};
             const related = state.related || { groups: {} };
+            const lineage = state.payloadLineage || { summary: {}, transitions: [] };
+            const decision = state.decisionSummary || {};
+            const campaign = state.campaignDetail || {};
+            const suggestions = state.decisionSupport?.suggestions || [];
             const relatedCounts = Object.entries(related.summary || {}).map(([key, count]) => `<div>${escapeHtml(key)}: ${escapeHtml(count)}</div>`).join("");
             const traceTimeline = (trace.timeline || []).map((event) => `
                 <tr>
@@ -1555,7 +2749,8 @@
                     <td>${escapeHtml(event.event || "")}</td>
                     <td>${escapeHtml(`${event.src || "?"} -> ${event.dst || "?"}`)}</td>
                     <td>${escapeHtml(event.attack_type || "(empty)")}</td>
-                    <td>${escapeHtml(event.mutation_v ?? "-")}</td>
+                    <td>${escapeHtml(`${event.mutation_type || "(empty)"} / v${event.mutation_v ?? "-"}`)}</td>
+                    <td>${escapeHtml(event.decode_status || "(none)")}</td>
                     <td>${escapeHtml(event.state_after || event.event || "-")}</td>
                 </tr>
             `).join("");
@@ -1585,7 +2780,7 @@
                     </div>
                     <div class="investigation-section">
                         <h3>Timeline</h3>
-                        ${traceTimeline ? `<table class="stat-table"><thead><tr><th>ts</th><th>event</th><th>route</th><th>attack</th><th>mutation</th><th>outcome</th></tr></thead><tbody>${traceTimeline}</tbody></table>` : `<div class="empty-state">No trace timeline available.</div>`}
+                        ${traceTimeline ? `<table class="stat-table"><thead><tr><th>ts</th><th>event</th><th>route</th><th>attack</th><th>mutation</th><th>decode</th><th>outcome</th></tr></thead><tbody>${traceTimeline}</tbody></table>` : `<div class="empty-state">No trace timeline available.</div>`}
                     </div>
                     <div class="investigation-section">
                         <h3>Related Metadata</h3>
@@ -1594,7 +2789,30 @@
                             <div class="key">epoch</div><div>${escapeHtml(state.selectedEvent.epoch ?? "-")}</div>
                             <div class="key">source_plane</div><div>${escapeHtml(state.selectedEvent.source_plane || "(empty)")}</div>
                             <div class="key">payload_hash</div><div>${escapeHtml(state.selectedEvent.payload_hash || "(empty)")}</div>
+                            <div class="key">parent_payload_hash</div><div>${escapeHtml(state.selectedEvent.parent_payload_hash || "(empty)")}</div>
+                            <div class="key">semantic_family</div><div>${escapeHtml(state.selectedEvent.semantic_family || "(empty)")}</div>
                             <div class="key">related groups</div><div>${relatedCounts || "(none)"}</div>
+                        </div>
+                    </div>
+                    <div class="investigation-section">
+                        <h3>Payload Lineage</h3>
+                        <div style="margin-bottom: 12px;">
+                            ${renderPayloadLineageMiniGraph(lineage, state.selectedEvent)}
+                        </div>
+                        <div class="pattern-list">
+                            <div class="hint-item">related events: ${escapeHtml(lineage.summary?.related_event_count ?? 0)}</div>
+                            <div class="hint-item">child payloads: ${escapeHtml(lineage.summary?.child_count ?? 0)}</div>
+                            <div class="hint-item">semantic family: ${escapeHtml(lineage.summary?.semantic_family || "(empty)")}</div>
+                            ${(lineage.transitions || []).map((item) => `<div class="hint-item">${escapeHtml(`${item.from_hash} -> ${item.to_hash} (${item.mutation_type || "no-mutation"})`)}</div>`).join("") || `<div class="empty-state">No payload lineage transitions loaded.</div>`}
+                        </div>
+                    </div>
+                    <div class="investigation-section">
+                        <h3>Payload Readability</h3>
+                        <div class="pattern-list">
+                            <div class="hint-item">decode status: ${escapeHtml(state.selectedEvent.decode_status || "(none)")}</div>
+                            <div class="hint-item">decode confidence: ${escapeHtml(state.selectedEvent.decode_confidence ?? 0)}</div>
+                            <div class="hint-item">decode chain: ${escapeHtml((state.selectedEvent.decode_chain || []).join(" -> ") || "(none)")}</div>
+                            <div class="hint-item">decoded preview: ${escapeHtml(compactPreview(state.selectedEvent.decoded_payload_preview || "No decoded preview available.", 220))}</div>
                         </div>
                     </div>
                     <div class="investigation-section">
@@ -1607,20 +2825,55 @@
                         </div>
                     </div>
                     <div class="investigation-section">
+                        <h3>Reasoning</h3>
+                        <div class="pattern-list">
+                            <div class="hint-item">strategy=${escapeHtml(decision.summary?.strategy_family || "(empty)")} | technique=${escapeHtml(decision.summary?.technique || "(empty)")} | mutation=${escapeHtml(decision.summary?.mutation_type || "(empty)")}</div>
+                            <div class="hint-item">why this attack: ${escapeHtml(decision.summary?.quick_explanation || "(empty)")}</div>
+                            <div class="hint-item">what changed: ${escapeHtml((decision.diff?.messages || []).join(" ") || "No prior decision.")}</div>
+                            <div class="detail-block">${escapeHtml(pretty(decision.summary?.score_breakdown || {}))}</div>
+                        </div>
+                    </div>
+                    <div class="investigation-section">
+                        <h3>Campaign Intelligence</h3>
+                        ${campaign.overview ? `
+                            <div class="kv">
+                                <div class="key">campaign_id</div><div>${escapeHtml(campaign.overview.campaign_id || "(empty)")}</div>
+                                <div class="key">objective</div><div>${escapeHtml(campaign.overview.objective || "(empty)")}</div>
+                                <div class="key">attempts</div><div>${escapeHtml(campaign.overview.total_attempts ?? 0)}</div>
+                                <div class="key">successes</div><div>${escapeHtml(campaign.overview.total_successes ?? 0)}</div>
+                                <div class="key">blocks</div><div>${escapeHtml(campaign.overview.total_blocks ?? 0)}</div>
+                                <div class="key">highest hop</div><div>${escapeHtml(campaign.overview.highest_hop_reached ?? 0)}</div>
+                                <div class="key">deepest target</div><div>${escapeHtml(campaign.overview.deepest_target_reached || "(empty)")}</div>
+                            </div>
+                            <div class="pattern-list" style="margin-top:12px;">
+                                ${(campaign.findings || []).map((finding) => `<div class="hint-item">${escapeHtml(finding)}</div>`).join("") || `<div class="empty-state">No campaign findings generated.</div>`}
+                            </div>
+                        ` : `<div class="empty-state">No campaign loaded for this event.</div>`}
+                    </div>
+                    <div class="investigation-section">
+                        <h3>Suggested Pivots</h3>
+                        <div class="pattern-list">
+                            ${suggestions.map((item) => `<div class="hint-item">${escapeHtml(item.title || "pivot")}: ${escapeHtml(item.reason || "")}</div>`).join("") || `<div class="empty-state">No deterministic next pivots generated.</div>`}
+                        </div>
+                    </div>
+                    <div class="investigation-section">
                         <h3>Notes</h3>
                         <div class="empty-state">Analyst notes placeholder. Case management is not wired yet.</div>
                     </div>
                 </div>
             `;
             panel.style.display = "block";
+            renderInvestigationQueryHelp();
         }
         function closeInvestigation() {
             document.getElementById("investigation-panel").style.display = "none";
+            state.investigation = null;
+            renderInvestigationQueryHelp();
         }
         async function refreshLive() {
             if (state.livePaused) return;
             try {
-                const filter = document.getElementById("live-filter").value.trim();
+                const filter = state.liveFilterApplied || "";
                 const payload = await fetchJson(`/api/live?after_id=${state.live.latest_id || 0}&limit=120&q=${encodeURIComponent(filter)}`);
                 state.live.latest_id = payload.latest_id || state.live.latest_id;
                 state.live.metrics = payload.metrics || {};
@@ -1637,7 +2890,23 @@
             setChip("stream-chip", state.livePaused ? "live: paused" : "live: streaming", state.livePaused ? "warn" : "good");
             document.getElementById("live-metrics").innerHTML = [["events/sec", metrics.events_per_sec ?? 0], ["infections", metrics.infections ?? 0], ["blocked", metrics.blocked ?? 0], ["heartbeat", metrics.heartbeat ?? 0], ["last reset_id", metrics.last_reset_id || "-"]].map(([label, value]) => `<div class="metric"><div class="label">${escapeHtml(label)}</div><div class="value">${escapeHtml(value)}</div></div>`).join("");
             const stream = document.getElementById("live-stream");
-            stream.innerHTML = state.live.events.slice().reverse().map((event) => `<div class="live-item"><div>${escapeHtml(event.ts)}</div><div class="code-inline">${escapeHtml(event.event)}</div><div>${escapeHtml(`${event.src || "?"} -> ${event.dst || "?"}`)} | ${escapeHtml(event.attack_type || "")} | reset=${escapeHtml(event.reset_id || "")}</div></div>`).join("");
+            document.getElementById("live-payloads-btn").textContent = `payloads: ${state.liveShowPayloads ? "on" : "off"}`;
+            stream.innerHTML = state.live.events.slice().reverse().map((event) => `
+                <div class="live-item">
+                    <div>${escapeHtml(event.ts)}</div>
+                    <div class="code-inline">${escapeHtml(event.event)}</div>
+                    <div class="live-item-main">
+                        <div>${escapeHtml(`${event.src || "?"} -> ${event.dst || "?"}`)} | ${escapeHtml(event.attack_type || "")} | reset=${escapeHtml(event.reset_id || "")}</div>
+                        ${state.liveShowPayloads && event.has_payload ? `
+                            <div class="live-payload">
+                                <div>hash=${escapeHtml(event.payload_hash || "(empty)")} | family=${escapeHtml(event.semantic_family || "(empty)")} | mutation=${escapeHtml(event.mutation_type || "(empty)")} | v=${escapeHtml(event.mutation_v ?? "-")}</div>
+                                <div>decode=${escapeHtml(event.decode_status || "(none)")} | wrapper=${escapeHtml(event.payload_wrapper_type || "(empty)")}</div>
+                                <div class="payload-preview">raw: ${escapeHtml(compactPreview(event.payload_preview || "Payload unavailable for this event.", 180))}</div>
+                                ${event.has_decoded_payload ? `<div class="payload-preview">decoded: ${escapeHtml(compactPreview(event.decoded_payload_preview || "No decoded preview available.", 180))}</div>` : ""}
+                            </div>
+                        ` : ""}
+                    </div>
+                </div>`).join("");
             if (state.liveScrollLock) stream.scrollTop = 0;
         }
         function renderStatus() {
@@ -1664,6 +2933,10 @@
                 scheduleControlPoll();
                 return;
             }
+            if (state.searchBusy) {
+                scheduleControlPoll(2500);
+                return;
+            }
             state.controlPoll.busy = true;
             try {
                 await loadControl();
@@ -1683,6 +2956,10 @@
                 return;
             }
             if (state.livePaused) {
+                scheduleLivePoll(3000);
+                return;
+            }
+            if (state.searchBusy) {
                 scheduleLivePoll(3000);
                 return;
             }
@@ -1724,9 +3001,48 @@
         document.getElementById("reset-btn").addEventListener("click", () => hardReset().catch((error) => addError(error.message)));
         document.getElementById("dump-btn").addEventListener("click", () => dumpLogs().catch((error) => addError(error.message)));
         document.getElementById("run-search-btn").addEventListener("click", () => runSearch().catch((error) => addError(error.message)));
-        document.getElementById("clear-search-btn").addEventListener("click", () => { document.getElementById("search-query").value = ""; document.getElementById("search-mode").value = "structured"; document.getElementById("time-range").value = "all"; runSearch().catch((error) => addError(error.message)); });
+        document.getElementById("toggle-query-help-btn").addEventListener("click", () => toggleQueryHelpPanel());
+        document.getElementById("toggle-columns-btn").addEventListener("click", () => {
+            document.getElementById("column-selector-panel").classList.toggle("open");
+        });
+        document.getElementById("clear-search-btn").addEventListener("click", () => {
+            document.getElementById("search-query").value = "";
+            document.getElementById("search-mode").value = "structured";
+            document.getElementById("time-range").value = "last_1h";
+            state.searchHasRun = false;
+            state.search = { events: [], interesting_fields: {}, timeline: [], total: 0, elapsed_ms: 0, warnings: [], deferred_analytics: false };
+            state.patterns = null;
+            state.stats = null;
+            state.statsPresets = null;
+            state.resultHints = [];
+            state.selectedEvent = null;
+            state.eventDetail = null;
+            state.related = null;
+            state.trace = null;
+            state.payloadLineage = null;
+            state.decisionSummary = null;
+            state.decisionSupport = null;
+            state.mutationAnalytics = null;
+            state.strategyAnalytics = null;
+            state.payloadFamilies = null;
+            state.campaignDetail = null;
+            state.investigation = null;
+            document.getElementById("investigation-panel").style.display = "none";
+            scheduleQueryValidation();
+            renderSearch();
+            renderInvestigationQueryHelp();
+        });
+        document.getElementById("search-query").addEventListener("input", () => scheduleQueryValidation());
         document.getElementById("search-query").addEventListener("keydown", (event) => {
             if (event.key === "Enter") runSearch().catch((error) => addError(error.message));
+        });
+        document.getElementById("search-mode").addEventListener("change", () => {
+            scheduleQueryValidation();
+            renderSearch();
+        });
+        document.getElementById("time-range").addEventListener("change", () => {
+            scheduleQueryValidation();
+            renderSearch();
         });
         document.getElementById("export-search-btn").addEventListener("click", () => {
             const blob = new Blob([JSON.stringify(state.search.events || [], null, 2)], { type: "application/json" });
@@ -1739,7 +3055,35 @@
             link.remove();
             URL.revokeObjectURL(url);
         });
-        document.getElementById("live-apply-btn").addEventListener("click", () => { state.live.latest_id = 0; state.live.events = []; refreshLive().catch((error) => addError(error.message)); scheduleLivePoll(250); });
+        document.getElementById("live-apply-btn").addEventListener("click", async () => {
+            const candidate = document.getElementById("live-filter").value.trim();
+            if (candidate) {
+                try {
+                    const params = new URLSearchParams();
+                    params.set("q", candidate);
+                    params.set("mode", "structured");
+                    params.set("time_range", "last_1h");
+                    const validation = await fetchJson(`/api/validate-query?${params.toString()}`);
+                    if (!validation.valid) {
+                        addError(`live filter invalid: ${validation.error}`);
+                        return;
+                    }
+                } catch (error) {
+                    addError(`live filter validation failed: ${error.message}`);
+                    return;
+                }
+            }
+            state.liveFilterApplied = candidate;
+            state.live.latest_id = 0;
+            state.live.events = [];
+            refreshLive().catch((error) => addError(error.message));
+            scheduleLivePoll(250);
+        });
+        document.getElementById("live-payloads-btn").addEventListener("click", (event) => {
+            state.liveShowPayloads = !state.liveShowPayloads;
+            event.target.textContent = `payloads: ${state.liveShowPayloads ? "on" : "off"}`;
+            renderLive();
+        });
         document.getElementById("live-pause-btn").addEventListener("click", (event) => { state.livePaused = !state.livePaused; event.target.textContent = state.livePaused ? "resume" : "pause"; renderLive(); });
         document.getElementById("live-lock-btn").addEventListener("click", (event) => { state.liveScrollLock = !state.liveScrollLock; event.target.textContent = `scroll lock: ${state.liveScrollLock ? "on" : "off"}`; });
         document.getElementById("live-clear-btn").addEventListener("click", () => { state.live.events = []; renderLive(); });
@@ -1748,16 +3092,41 @@
         document.getElementById("pivot-attack-btn").addEventListener("click", () => { if (!state.selectedEvent?.attack_type) return; setStructuredQuery(`attack_type=${state.selectedEvent.attack_type}`); switchView("search"); runSearch().catch((error) => addError(error.message)); });
         document.getElementById("pivot-injection-btn").addEventListener("click", () => { if (!state.selectedEvent?.injection_id) return; setStructuredQuery(`injection_id=${quoteQueryValue(state.selectedEvent.injection_id)}`); switchView("search"); runSearch().catch((error) => addError(error.message)); });
         document.getElementById("pivot-reset-btn").addEventListener("click", () => { if (!state.selectedEvent?.reset_id) return; setStructuredQuery(`reset_id=${quoteQueryValue(state.selectedEvent.reset_id)}`); switchView("search"); runSearch().catch((error) => addError(error.message)); });
+        document.getElementById("pivot-payload-btn").addEventListener("click", () => { const event = state.eventDetail?.event || state.selectedEvent; if (!event?.payload_hash) return; setStructuredQuery(`payload_hash=${quoteQueryValue(event.payload_hash)}`); switchView("search"); runSearch().catch((error) => addError(error.message)); });
+        document.getElementById("open-campaign-btn").addEventListener("click", async () => {
+            const event = state.eventDetail?.event || state.selectedEvent;
+            const campaignId = event?.metadata?.campaign_id || event?.campaign_id;
+            if (!campaignId) return;
+            await loadCampaign(campaignId).catch((error) => addError(error.message));
+            openInvestigation();
+        });
         document.getElementById("pivot-trace-btn").addEventListener("click", async () => {
             if (!state.selectedEvent?.event_id) return;
             await Promise.all([
                 loadTrace(state.selectedEvent.event_id),
                 loadRelated(state.selectedEvent.event_id),
+                (state.selectedEvent.payload_hash ? loadPayloadLineage(state.selectedEvent.payload_hash) : Promise.resolve()),
+                loadReasoningBundle(state.selectedEvent.event_id),
             ]);
             openInvestigation();
         });
         document.getElementById("show-related-btn").addEventListener("click", () => { if (!state.selectedEvent?.event_id) return; loadRelated(state.selectedEvent.event_id).catch((error) => addError(error.message)); });
-        document.getElementById("open-investigation-btn").addEventListener("click", () => openInvestigation());
+        document.getElementById("copy-payload-preview-btn").addEventListener("click", async () => { const event = state.eventDetail?.event || state.selectedEvent; if (!event?.payload_preview) return; await navigator.clipboard.writeText(event.payload_preview); });
+        document.getElementById("copy-decoded-preview-btn").addEventListener("click", async () => { const event = state.eventDetail?.event || state.selectedEvent; if (!event?.decoded_payload_preview) return; await navigator.clipboard.writeText(event.decoded_payload_preview); });
+        document.getElementById("payload-view-raw-btn").addEventListener("click", () => { state.detailPayloadView = "raw"; renderDetail(); });
+        document.getElementById("payload-view-decoded-btn").addEventListener("click", () => { state.detailPayloadView = "decoded"; renderDetail(); });
+        document.getElementById("payload-view-side-btn").addEventListener("click", () => { state.detailPayloadView = "side"; renderDetail(); });
+        document.getElementById("show-payload-btn").addEventListener("click", async () => { if (!state.selectedEvent?.event_id) return; const detail = await loadEventDetail(state.selectedEvent.event_id, false); const event = detail?.event; if (event?.payload_preview) openPayloadModal(event.payload_preview, "raw payload preview"); });
+        document.getElementById("show-decoded-payload-btn").addEventListener("click", async () => { if (!state.selectedEvent?.event_id) return; const detail = await loadEventDetail(state.selectedEvent.event_id, true); const event = detail?.event; openPayloadModal(event?.decoded_payload_text || "Decoded payload unavailable for this event.", "decoded payload view"); });
+        document.getElementById("full-payload-btn").addEventListener("click", async () => { if (!state.selectedEvent?.event_id) return; const detail = await loadEventDetail(state.selectedEvent.event_id, true); const event = detail?.event; openPayloadModal(event?.payload_text || "Payload unavailable for this event.", "raw payload view"); });
+        document.getElementById("show-lineage-btn").addEventListener("click", () => { const event = state.eventDetail?.event || state.selectedEvent; if (!event?.payload_hash) return; loadPayloadLineage(event.payload_hash).catch((error) => addError(error.message)); });
+        document.getElementById("show-related-payload-btn").addEventListener("click", () => { const event = state.eventDetail?.event || state.selectedEvent; if (!event?.payload_hash) return; setStructuredQuery(`payload_hash=${quoteQueryValue(event.payload_hash)} OR parent_payload_hash=${quoteQueryValue(event.payload_hash)}`); switchView("search"); runSearch().catch((error) => addError(error.message)); });
+        document.getElementById("open-investigation-btn").addEventListener("click", async () => {
+            const event = state.eventDetail?.event || state.selectedEvent;
+            if (!event?.event_id) return;
+            await loadReasoningBundle(event.event_id).catch((error) => addError(error.message));
+            openInvestigation();
+        });
         document.getElementById("investigation-close-btn").addEventListener("click", () => closeInvestigation());
         document.getElementById("investigation-export-btn").addEventListener("click", () => {
             if (!state.investigation) return;
@@ -1771,7 +3140,20 @@
             link.remove();
             URL.revokeObjectURL(url);
         });
-        document.getElementById("copy-json-btn").addEventListener("click", async () => { if (!state.selectedEvent) return; await navigator.clipboard.writeText(JSON.stringify(state.selectedEvent.raw_event || state.selectedEvent, null, 2)); });
+        document.getElementById("copy-json-btn").addEventListener("click", async () => {
+            const event = state.eventDetail?.event || state.selectedEvent;
+            if (!event) return;
+            await navigator.clipboard.writeText(JSON.stringify(event.raw_event || event, null, 2));
+        });
+        document.getElementById("copy-payload-btn").addEventListener("click", async () => {
+            const text = document.getElementById("payload-modal-body").textContent || "";
+            if (!text || text === "(payload not loaded)") return;
+            await navigator.clipboard.writeText(text);
+        });
+        document.getElementById("close-payload-modal-btn").addEventListener("click", closePayloadModal);
+        document.getElementById("payload-modal").addEventListener("click", (event) => {
+            if (event.target.id === "payload-modal") closePayloadModal();
+        });
         document.querySelectorAll("[data-quick-filter]").forEach((button) => button.addEventListener("click", () => {
             const token = button.dataset.quickFilter;
             if (token === "current_reset") {
@@ -1788,6 +3170,7 @@
             }
             toggleQueryToken(token);
         }));
+        document.getElementById("refresh-runs-btn").addEventListener("click", () => loadRuns().catch((e) => addError(e.message)));
         document.addEventListener("visibilitychange", () => {
             scheduleControlPoll(500);
             scheduleLivePoll(500);
@@ -1795,7 +3178,18 @@
 
         async function bootstrap() {
             try {
-                await Promise.all([loadControl(), runSearch()]);
+                await loadControl();
+                await loadQueryHelp();
+                await loadRuns();
+                toggleQueryHelpPanel(false);
+                state.queryValidation = {
+                    valid: true,
+                    warnings: ["Run a focused search to load results. Broad all-time queries are discouraged."],
+                    normalized_query: "",
+                };
+                renderSearch();
+                renderInvestigationQueryHelp();
+                renderQueryFeedback();
                 await refreshLive();
             } catch (error) {
                 addError(`bootstrap failed: ${error.message}`);
