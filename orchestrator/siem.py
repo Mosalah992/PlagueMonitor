@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import re
@@ -39,6 +40,51 @@ except ImportError:  # pragma: no cover - test/runtime import path split
         parse_timestamp as intel_parse_timestamp,
         stable_unique,
     )
+
+try:
+    from kill_chain_constants import (
+        EVENT_TO_KILL_CHAIN_STAGE,
+        C2_EVENT_TYPES,
+        BEACON_FILTER_EVENTS,
+        EXFIL_FILTER_EVENTS,
+        TASKING_FILTER_EVENTS,
+        KILL_CHAIN_FILTER_EVENTS,
+        POST_COMPROMISE_EVENT_TYPES,
+    )
+except ImportError:
+    try:
+        from orchestrator.kill_chain_constants import (
+            EVENT_TO_KILL_CHAIN_STAGE,
+            C2_EVENT_TYPES,
+            BEACON_FILTER_EVENTS,
+            EXFIL_FILTER_EVENTS,
+            TASKING_FILTER_EVENTS,
+            KILL_CHAIN_FILTER_EVENTS,
+            POST_COMPROMISE_EVENT_TYPES,
+        )
+    except ImportError:
+        import sys as _sys
+        _agents_shared = os.path.join(os.path.dirname(__file__), "..", "agents", "shared")
+        if _agents_shared not in _sys.path:
+            _sys.path.insert(0, _agents_shared)
+        try:
+            from kill_chain import (
+                EVENT_TO_KILL_CHAIN_STAGE,
+                C2_EVENT_TYPES,
+                BEACON_FILTER_EVENTS,
+                EXFIL_FILTER_EVENTS,
+                TASKING_FILTER_EVENTS,
+                KILL_CHAIN_FILTER_EVENTS,
+                POST_COMPROMISE_EVENT_TYPES,
+            )
+        except ImportError:
+            EVENT_TO_KILL_CHAIN_STAGE = {}
+            C2_EVENT_TYPES = set()
+            BEACON_FILTER_EVENTS = set()
+            EXFIL_FILTER_EVENTS = set()
+            TASKING_FILTER_EVENTS = set()
+            KILL_CHAIN_FILTER_EVENTS = set()
+            POST_COMPROMISE_EVENT_TYPES = set()
 
 class ClosingConnection(sqlite3.Connection):
     def __exit__(self, exc_type, exc_value, traceback) -> bool:  # type: ignore[override]
@@ -164,11 +210,34 @@ METADATA_ALIASES = {
     "uncertainty_reason": "$.uncertainty_reason",
     "uncertainty_level": "$.uncertainty_level",
     "semantic_decision_path": "$.semantic_decision_path",
+    # C2 / Kill Chain fields
+    "kill_chain_stage": "$.kill_chain_stage",
+    "previous_kill_chain_stage": "$.previous_kill_chain_stage",
+    "c2_session_id": "$.c2_session_id",
+    "c2_channel_id": "$.c2_channel_id",
+    "beacon_id": "$.beacon_id",
+    "exfil_id": "$.exfil_id",
+    "task_id": "$.task_id",
+    "exfil_type": "$.exfil_type",
+    "exfil_size": "$.exfil_size",
+    "exfil_target": "$.exfil_target",
+    "beacon_interval": "$.beacon_interval",
+    "beacon_success": "$.beacon_success",
+    "task_name": "$.task_name",
+    "task_result": "$.task_result",
+    "objective_status": "$.objective_status",
+    "compromised_agent": "$.compromised_agent",
+    "destination_system": "$.destination_system",
+    "detection_surface": "$.detection_surface",
+    "blocked_by": "$.blocked_by",
+    "decision_source": "$.decision_source",
+    "from_stage": "$.from_stage",
+    "to_stage": "$.to_stage",
 }
 
 TEXT_COLUMNS = ("event", "src", "dst", "attack_type", "payload", "payload_preview", "decoded_payload_preview", "decode_status", "decode_chain", "payload_wrapper_type", "payload_prefix_tag", "raw_event", "reset_id", "injection_id")
-NUMERIC_FIELDS = {"attack_strength", "mutation_v", "hop_count", "epoch", "knowledge_confidence", "inferred_target_resistance", "prior_success_rate", "score", "payload_length", "has_payload", "has_decoded_payload", "decode_confidence", "strategy_weight_after", "mutation_weight_after", "defense_confidence", "defense_effectiveness", "dynamic_defense", "defense_tier", "hardening_effect", "inferred_risk", "anomaly_score", "repetition_score", "weight_change", "retry_count"}
-FIELD_SIDEBAR_FIELDS = ("event", "src", "dst", "attack_type", "state_after", "reset_id", "epoch", "source_plane", "strategy_family", "technique", "campaign_id", "objective", "semantic_family", "mutation_type", "decode_status", "payload_wrapper_type", "knowledge_source", "defense_type", "selected_strategy", "defense_result")
+NUMERIC_FIELDS = {"attack_strength", "mutation_v", "hop_count", "epoch", "knowledge_confidence", "inferred_target_resistance", "prior_success_rate", "score", "payload_length", "has_payload", "has_decoded_payload", "decode_confidence", "strategy_weight_after", "mutation_weight_after", "defense_confidence", "defense_effectiveness", "dynamic_defense", "defense_tier", "hardening_effect", "inferred_risk", "anomaly_score", "repetition_score", "weight_change", "retry_count", "exfil_size", "beacon_interval", "beacon_success"}
+FIELD_SIDEBAR_FIELDS = ("event", "src", "dst", "attack_type", "state_after", "reset_id", "epoch", "source_plane", "strategy_family", "technique", "campaign_id", "objective", "semantic_family", "mutation_type", "decode_status", "payload_wrapper_type", "knowledge_source", "defense_type", "selected_strategy", "defense_result", "kill_chain_stage", "c2_session_id", "objective_status", "task_name", "exfil_type", "blocked_by")
 FAST_TIMELINE_SAMPLE_LIMIT = 2000
 FAST_FIELD_SAMPLE_LIMIT = 1500
 AUTO_ANALYTICS_RESULT_THRESHOLD = 2000
@@ -214,6 +283,24 @@ QUERY_HELP_EXAMPLES = {
         "campaign_id exists AND event=CAMPAIGN_ADAPTED",
         "payload_hash exists AND parent_payload_hash exists",
         "event=STRATEGY_SELECTED AND technique exists",
+    ],
+    "c2_operations": [
+        "kill_chain_stage=BEACON",
+        "kill_chain_stage=EXFILTRATION AND objective_status=completed",
+        "event=C2_BEACON AND compromised_agent=agent-c",
+        "event=EXFIL_BLOCKED",
+        "objective=ESTABLISH_C2 AND objective_status=completed",
+        "task_name=collect_state",
+        "exfil_type=agent_state",
+        "event=KILL_CHAIN_TRANSITION AND from_stage=COMPROMISE AND to_stage=BEACON",
+        "c2_session_id exists AND beacon_success=false",
+    ],
+    "kill_chain": [
+        "kill_chain_stage=COMPROMISE AND dst=agent-a",
+        "kill_chain_stage=BEACON",
+        "kill_chain_stage=EXFILTRATION",
+        "event=KILL_CHAIN_TRANSITION",
+        "campaign_id exists AND kill_chain_stage exists",
     ],
 }
 ATTACK_TYPE_SYNONYMS = {
@@ -281,6 +368,18 @@ PHASE3_PRESET_QUERIES = [
     {"id": "failed_defenses", "label": "Failed defenses", "query": "event=DEFENSE_RESULT_EVALUATED AND defense_result=success", "context": "search"},
     {"id": "defense_vs_mutation", "label": "Defense vs mutation analysis", "query": "event=DEFENSE_RESULT_EVALUATED AND defense_type exists AND mutation_type exists", "context": "search"},
     {"id": "defense_vs_strategy", "label": "Defense vs strategy analysis", "query": "event=DEFENSE_RESULT_EVALUATED AND defense_type exists AND attack_strategy exists", "context": "search"},
+    # C2 / Kill Chain presets
+    {"id": "campaigns_reached_c2", "label": "Campaigns that reached C2", "query": "event=C2_CHANNEL_ESTABLISHED", "context": "search"},
+    {"id": "campaigns_reached_exfil", "label": "Campaigns that reached exfil", "query": "event=C2_EXFIL AND beacon_success=true", "context": "search"},
+    {"id": "blocked_exfil_campaigns", "label": "Blocked exfil campaigns", "query": "event=EXFIL_BLOCKED", "context": "search"},
+    {"id": "deep_node_no_exfil", "label": "Deep-node compromise without exfil", "query": "kill_chain_stage=COMPROMISE AND dst=agent-a", "context": "search"},
+    {"id": "beacon_only_no_exfil", "label": "Beacon-only (no exfil)", "query": "event=C2_BEACON", "context": "search"},
+    {"id": "exfil_after_mutation", "label": "Exfil after payload reuse", "query": "event=C2_EXFIL AND mutation_v>=2", "context": "search"},
+    {"id": "kill_chain_transitions", "label": "Kill chain stage transitions", "query": "event=KILL_CHAIN_TRANSITION", "context": "search"},
+    {"id": "objective_completions", "label": "Objective completions", "query": "event=OBJECTIVE_COMPLETED", "context": "search"},
+    {"id": "objective_failures", "label": "Objective failures", "query": "event=OBJECTIVE_FAILED", "context": "search"},
+    {"id": "c2_sessions_active", "label": "Active C2 sessions", "query": "event=C2_CHANNEL_ESTABLISHED", "context": "investigation"},
+    {"id": "post_compromise_timeline", "label": "Post-compromise timeline", "query": "kill_chain_stage=BEACON OR kill_chain_stage=TASKING OR kill_chain_stage=EXFILTRATION", "context": "investigation"},
 ]
 
 
@@ -415,7 +514,8 @@ class SIEMIndexer:
         self.jsonl_path = jsonl_path
         self.source_db_path = source_db_path or db_path
         self._repairing_index = False
-        self._sync_lock = threading.Lock()
+        self._sync_lock = threading.RLock()
+        self._redis_import_lock = asyncio.Lock()
         self._last_sync_time: float = 0.0
         self._sync_cooldown_s: float = float(os.environ.get("SIEM_SYNC_COOLDOWN_S", "5"))
         self._query_timeout_s: float = float(os.environ.get("SIEM_QUERY_TIMEOUT_S", "20"))
@@ -698,6 +798,13 @@ class SIEMIndexer:
         decode_result = decode_payload(payload_text, max_preview_len=200)
         if not semantic_family and decode_result.get("normalized_semantic_family"):
             semantic_family = str(decode_result["normalized_semantic_family"])
+        event_type_str = str(raw_event.get("event", raw_event.get("event_type", "")))
+        kill_chain_stage = str(
+            metadata.get("kill_chain_stage")
+            or EVENT_TO_KILL_CHAIN_STAGE.get(event_type_str, "")
+        )
+        if kill_chain_stage:
+            metadata["kill_chain_stage"] = kill_chain_stage
         return {
             "event_id": str(raw_event.get("event_id") or raw_event.get("id") or fallback_event_id),
             "raw_source_id": raw_source_id,
@@ -922,20 +1029,43 @@ class SIEMIndexer:
         stream_name: str = "events_stream",
         count: int = 500,
     ) -> Dict[str, Any]:
-        entries = await redis_client.xrevrange(stream_name, count=count)
-        imported = 0
-        with self._connect() as conn:
-            for stream_id, payload in reversed(entries):
-                normalized = self._normalize_event(
-                    dict(payload),
-                    source_type="redis_stream",
-                    source_name=stream_name,
-                    raw_source_id=None,
-                    fallback_event_id=f"{stream_name}:{stream_id}",
-                )
-                self._insert_event(conn, normalized)
-                imported += 1
-        return {"imported": imported, "stream_name": stream_name}
+        normalized_count = max(1, min(int(count or 1), 1000))
+        checkpoint_key = f"redis_stream_checkpoint:{stream_name}"
+
+        async with self._redis_import_lock:
+            with self._sync_lock:
+                with self._connect() as conn:
+                    checkpoint = self._get_state(conn, checkpoint_key, "0-0")
+
+            entries = await redis_client.xread(
+                {stream_name: checkpoint},
+                count=normalized_count,
+                block=50,
+            )
+
+            imported = 0
+            last_stream_id = checkpoint
+            with self._sync_lock:
+                with self._connect() as conn:
+                    for _stream_name, messages in entries:
+                        for stream_id, payload in messages:
+                            normalized = self._normalize_event(
+                                dict(payload),
+                                source_type="redis_stream",
+                                source_name=stream_name,
+                                raw_source_id=None,
+                                fallback_event_id=f"{stream_name}:{stream_id}",
+                            )
+                            self._insert_event(conn, normalized)
+                            imported += 1
+                            last_stream_id = stream_id
+                    if imported:
+                        self._set_state(conn, checkpoint_key, str(last_stream_id))
+            return {
+                "imported": imported,
+                "stream_name": stream_name,
+                "last_stream_id": str(last_stream_id),
+            }
 
     def _normalize_query(self, query: str, mode: str) -> str:
         if mode != "natural":
@@ -1328,6 +1458,10 @@ class SIEMIndexer:
         event["raw_event"] = _safe_load_json(event.get("raw_event"))[0]
         event["has_payload"] = bool(event.get("has_payload"))
         event["has_decoded_payload"] = bool(event.get("has_decoded_payload"))
+        # Surface kill_chain_stage as a top-level field
+        kcs = event["metadata"].get("kill_chain_stage") or EVENT_TO_KILL_CHAIN_STAGE.get(str(event.get("event", "")), "")
+        if kcs:
+            event["kill_chain_stage"] = kcs
         if isinstance(event.get("decode_chain"), str):
             try:
                 loaded_chain = json.loads(event.get("decode_chain") or "[]")
@@ -2814,9 +2948,46 @@ class SIEMIndexer:
                 "hop_count": event.get("hop_count"),
                 "state_after": event.get("state_after"),
                 "payload_changed": event.get("payload_changed", False),
+                "kill_chain_stage": event.get("kill_chain_stage", ""),
             }
             for event in linked
         ]
+
+        # Kill chain summary
+        kill_chain_stage_counts: Dict[str, int] = {}
+        kill_chain_transitions: List[Dict[str, str]] = []
+        highest_kill_chain_stage = ""
+        _highest_idx = -1
+        for event in linked:
+            stage = event.get("kill_chain_stage", "")
+            if stage:
+                kill_chain_stage_counts[stage] = kill_chain_stage_counts.get(stage, 0) + 1
+                try:
+                    sidx = ["INITIAL_INJECTION", "PAYLOAD_GENERATION", "DELIVERY", "EXPLOITATION", "RELAY", "DEFENSE_INTERACTION", "COMPROMISE", "BEACON", "TASKING", "EXFILTRATION", "PERSISTENCE", "DETECTION"].index(stage)
+                except ValueError:
+                    sidx = -1
+                if sidx > _highest_idx:
+                    _highest_idx = sidx
+                    highest_kill_chain_stage = stage
+            if event.get("event") == "KILL_CHAIN_TRANSITION":
+                md = event.get("metadata", {})
+                kill_chain_transitions.append({
+                    "from_stage": str(md.get("from_stage", "")),
+                    "to_stage": str(md.get("to_stage", "")),
+                    "agent_id": str(md.get("compromised_agent", event.get("src", ""))),
+                    "reason": str(md.get("reason", "")),
+                })
+        # C2 session info from trace
+        c2_session_ids = sorted({str(e.get("metadata", {}).get("c2_session_id", "")) for e in linked if e.get("metadata", {}).get("c2_session_id")})
+        objective_statuses = sorted({str(e.get("metadata", {}).get("objective_status", "")) for e in linked if e.get("metadata", {}).get("objective_status")})
+
+        if highest_kill_chain_stage and highest_kill_chain_stage not in ("INITIAL_INJECTION", "PAYLOAD_GENERATION", "DELIVERY"):
+            trace_hints.append({"severity": "info", "message": f"Kill chain reached {highest_kill_chain_stage} stage in this trace."})
+        if "EXFILTRATION" in kill_chain_stage_counts:
+            trace_hints.append({"severity": "critical", "message": f"Data exfiltration detected: {kill_chain_stage_counts['EXFILTRATION']} events."})
+        if "BEACON" in kill_chain_stage_counts:
+            trace_hints.append({"severity": "warn", "message": f"C2 beacon activity detected: {kill_chain_stage_counts['BEACON']} events."})
+
         return {
             "root_event": root_event,
             "scope_reason": scope_reason,
@@ -2833,6 +3004,13 @@ class SIEMIndexer:
                 "max_hop_count": max((event.get("hop_count") or 0 for event in linked), default=0),
                 "max_mutation_v": max_mutation,
                 "terminal_outcome": terminal_events[-1].get("event") if terminal_events else "",
+            },
+            "kill_chain_summary": {
+                "highest_stage_reached": highest_kill_chain_stage,
+                "stage_counts": kill_chain_stage_counts,
+                "transitions": kill_chain_transitions,
+                "c2_session_ids": c2_session_ids,
+                "objective_statuses": objective_statuses,
             },
             "warnings": warnings,
             "unresolved_attempts": unresolved,
@@ -2937,6 +3115,30 @@ class SIEMIndexer:
         if decoded_markers:
             marker, count = max(decoded_markers.items(), key=lambda item: item[1])
             hints.append({"severity": "info", "message": f"Decoded previews repeatedly reveal {marker} ({count} events)."})
+        # C2 / post-compromise hints
+        c2_beacon_count = sum(1 for e in events if e.get("event") in BEACON_FILTER_EVENTS)
+        c2_exfil_count = sum(1 for e in events if e.get("event") in EXFIL_FILTER_EVENTS)
+        exfil_blocked_count = sum(1 for e in events if e.get("event") == "EXFIL_BLOCKED")
+        compromise_count = sum(1 for e in events if e.get("event") == "INFECTION_SUCCESSFUL")
+        if c2_beacon_count:
+            hints.append({"severity": "critical", "message": f"C2 beacon activity detected: {c2_beacon_count} beacon events in result set."})
+        if c2_exfil_count:
+            hints.append({"severity": "critical", "message": f"Data exfiltration detected: {c2_exfil_count} exfil events in result set."})
+        if exfil_blocked_count:
+            hints.append({"severity": "warn", "message": f"Exfil blocked after successful beacon: {exfil_blocked_count} events. Defense layer caught post-compromise action."})
+        if compromise_count > 0 and c2_beacon_count == 0:
+            hints.append({"severity": "info", "message": f"{compromise_count} compromises detected but no C2 beacons — attacker may be staging or throughput-limited."})
+        if c2_beacon_count > 0 and c2_exfil_count == 0:
+            hints.append({"severity": "info", "message": "C2 session established but no exfiltration attempted — attacker may be staging."})
+        # Kill chain stage distribution hint
+        kc_stages: Dict[str, int] = {}
+        for e in events:
+            s = e.get("kill_chain_stage", "")
+            if s:
+                kc_stages[s] = kc_stages.get(s, 0) + 1
+        if len(kc_stages) >= 3:
+            stages_str = ", ".join(f"{k}={v}" for k, v in sorted(kc_stages.items(), key=lambda x: -x[1])[:5])
+            hints.append({"severity": "info", "message": f"Multi-stage campaign detected. Stage distribution: {stages_str}"})
         return {"structured_query": plan.structured_query, "hints": hints}
 
     def _query_has_narrowing_filters(self, structured_query: str) -> bool:
@@ -4619,8 +4821,8 @@ class SIEMIndexer:
                 rows = list(reversed(rows))
             latest_id = conn.execute("SELECT COALESCE(MAX(id), 0) AS id FROM siem_events").fetchone()["id"]
             recent_rows = conn.execute(
-                "SELECT event, reset_id, parse_error FROM siem_events WHERE ts >= ?",
-                ((datetime.now(timezone.utc) - timedelta(seconds=30)).isoformat(),),
+                "SELECT event, reset_id, parse_error FROM siem_events WHERE CAST(ts AS REAL) >= ?",
+                (time.time() - 30,),
             ).fetchall()
             last_reset_row = conn.execute(
                 "SELECT reset_id FROM siem_events WHERE reset_id != '' ORDER BY id DESC LIMIT 1"
@@ -4630,7 +4832,7 @@ class SIEMIndexer:
             ).fetchone()
             last_event_row = conn.execute("SELECT ts FROM siem_events ORDER BY id DESC LIMIT 1").fetchone()
         return {
-            "events": [self._row_to_event(row) for row in rows],
+            "events": [self._row_to_event(row, include_full_payload=True) for row in rows],
             "latest_id": int(latest_id or 0),
             "metrics": {
                 "events_per_sec": round(len(recent_rows) / 30.0, 2),

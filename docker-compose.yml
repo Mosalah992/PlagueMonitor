@@ -8,6 +8,14 @@ services:
     volumes:
       - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
     command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 3s
+    mem_limit: ${REDIS_MEM_LIMIT:-256m}
+    cpus: ${REDIS_CPUS:-0.50}
     networks:
       - epidemic_net
 
@@ -23,9 +31,17 @@ services:
       - ./logs:/app/logs
     environment:
       - REDIS_URL=redis://redis:6379/0
-      - OLLAMA_URL=http://host.docker.internal:11434
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - C2_BEACON_SERVER_URL=${C2_BEACON_SERVER_URL:-https://v0-beaconing-project-server-mdml8734h-mosalah992s-projects.vercel.app}
+      - VERCEL_PROTECTION_BYPASS=${VERCEL_PROTECTION_BYPASS:-}
+      - C2_ENABLED=${C2_ENABLED:-1}
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    mem_limit: ${ORCHESTRATOR_MEM_LIMIT:-1g}
+    cpus: ${ORCHESTRATOR_CPUS:-1.0}
     networks:
       - epidemic_net
 
@@ -39,7 +55,7 @@ services:
       - AGENT_ID=agent-a
       - ROLE=guardian
       - LLM_MODEL=${AGENT_A_MODEL:-llama3:8b-instruct}
-      - OLLAMA_URL=http://host.docker.internal:11434
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
       - REDIS_URL=redis://redis:6379/0
       - HEARTBEAT_INTERVAL_S=${HEARTBEAT_INTERVAL_S:-1800}
       - DEFENSE_LEVEL=${AGENT_A_DEFENSE_LEVEL:-0.85}
@@ -54,7 +70,12 @@ services:
       - GUARDIAN_SUSPICION_THRESHOLD=${GUARDIAN_SUSPICION_THRESHOLD:-3}
       - GUARDIAN_IMMUNITY_BOOST_ON_BLOCK=${GUARDIAN_IMMUNITY_BOOST_ON_BLOCK:-0.04}
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    mem_limit: ${AGENT_A_MEM_LIMIT:-1g}
+    cpus: ${AGENT_A_CPUS:-1.0}
     networks:
       - epidemic_net
 
@@ -68,7 +89,7 @@ services:
       - AGENT_ID=agent-b
       - ROLE=analyst
       - LLM_MODEL=${AGENT_B_MODEL:-mistral:7b-instruct}
-      - OLLAMA_URL=http://host.docker.internal:11434
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
       - REDIS_URL=redis://redis:6379/0
       - HEARTBEAT_INTERVAL_S=${HEARTBEAT_INTERVAL_S:-1800}
       - DEFENSE_LEVEL=${AGENT_B_DEFENSE_LEVEL:-0.50}
@@ -82,7 +103,12 @@ services:
       - ANALYST_MIN_INFECTION_P=${ANALYST_MIN_INFECTION_P:-0.15}
       - ANALYST_MAX_INFECTION_P=${ANALYST_MAX_INFECTION_P:-0.85}
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    mem_limit: ${AGENT_B_MEM_LIMIT:-1g}
+    cpus: ${AGENT_B_CPUS:-1.0}
     networks:
       - epidemic_net
 
@@ -97,7 +123,7 @@ services:
       - ROLE=courier
       - LLM_MODEL=${AGENT_C_MODEL:-phi3:mini}
       - AGENT_C_ATTACK_MODEL=${AGENT_C_ATTACK_MODEL:-dolphin-mistral:latest}
-      - OLLAMA_URL=http://host.docker.internal:11434
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
       - REDIS_URL=redis://redis:6379/0
       - HEARTBEAT_INTERVAL_S=${HEARTBEAT_INTERVAL_S:-1800}
       - ATTACKER_OBJECTIVE=${ATTACKER_OBJECTIVE:-SPREAD_FAST}
@@ -113,7 +139,12 @@ services:
       - ATTACK_GENERATION_MAX_RETRIES=${ATTACK_GENERATION_MAX_RETRIES:-2}
       - LLM_ATTACK_BOOST=${LLM_ATTACK_BOOST:-1.15}
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    mem_limit: ${AGENT_C_MEM_LIMIT:-1g}
+    cpus: ${AGENT_C_CPUS:-1.0}
     networks:
       - epidemic_net
 

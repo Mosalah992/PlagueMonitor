@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import json
+import threading
 from datetime import datetime, timezone
 
 
@@ -20,6 +21,7 @@ class EventLogger:
         self.db_path = db_path
         self.jsonl_path = jsonl_path
         self._conn: sqlite3.Connection | None = None
+        self._write_lock = threading.Lock()
         self._init_db()
 
     def _get_conn(self) -> sqlite3.Connection:
@@ -116,28 +118,47 @@ class EventLogger:
             or ""
         )
 
-        # Write to JSONL (append-only, includes both timestamps)
-        with open(self.jsonl_path, "a") as f:
-            f.write(json.dumps(event_data) + "\n")
+        json_line = json.dumps(event_data) + "\n"
+        jsonl_path = self.jsonl_path
+        os.makedirs(os.path.dirname(jsonl_path), exist_ok=True)
 
-        # Write to SQLite using the persistent connection and configured journal mode.
-        conn = self._get_conn()
-        conn.execute('''
-            INSERT INTO events (timestamp, logger_ts, src_agent, dst_agent, event_type, attack_type, payload, mutation_v, agent_state, metadata)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            str(agent_ts),
-            logger_ts,
-            event_data.get("src", ""),
-            event_data.get("dst", ""),
-            event_data.get("event", ""),
-            event_data.get("attack_type", ""),
-            event_data.get("payload", ""),
-            event_data.get("mutation_v", None),
-            state_after,
-            json.dumps(metadata),
-        ))
-        conn.commit()
+        with self._write_lock:
+            jsonl_size_before = os.path.getsize(jsonl_path) if os.path.exists(jsonl_path) else 0
+            jsonl_written = False
+            conn = self._get_conn()
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+                conn.execute('''
+                    INSERT INTO events (timestamp, logger_ts, src_agent, dst_agent, event_type, attack_type, payload, mutation_v, agent_state, metadata)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    str(agent_ts),
+                    logger_ts,
+                    event_data.get("src", ""),
+                    event_data.get("dst", ""),
+                    event_data.get("event", ""),
+                    event_data.get("attack_type", ""),
+                    event_data.get("payload", ""),
+                    event_data.get("mutation_v", None),
+                    state_after,
+                    json.dumps(metadata),
+                ))
+
+                with open(jsonl_path, "a", encoding="utf-8") as handle:
+                    handle.write(json_line)
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                jsonl_written = True
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                if jsonl_written:
+                    try:
+                        with open(jsonl_path, "r+b") as handle:
+                            handle.truncate(jsonl_size_before)
+                    except OSError:
+                        pass
+                raise
 
     def close(self):
         """Close the persistent connection cleanly."""

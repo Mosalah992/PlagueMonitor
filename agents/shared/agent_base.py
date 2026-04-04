@@ -32,6 +32,18 @@ NETWORK_GRAPH = {
     "agent-b": ["agent-a"],
     "agent-a": [],
 }
+VALID_AGENT_IDS = frozenset(NETWORK_GRAPH.keys())
+
+
+def _is_valid_agent_id(value: str) -> bool:
+    return str(value or "") in VALID_AGENT_IDS
+
+
+def _agent_channel_name(agent_id: str) -> str:
+    normalized = str(agent_id or "")
+    if not _is_valid_agent_id(normalized):
+        raise ValueError(f"invalid agent_id: {agent_id}")
+    return f"agent_{normalized}"
 
 class AgentState(enum.Enum):
     """Agent infection states"""
@@ -105,8 +117,10 @@ class AgentBase:
         self._vaccine_expires: float = 0.0
         self._vaccine_boost: float = 0.0
         self.infection_mode = False  # Behavioral flag: are we actively spreading?
-        self.infection_history: List[InfectionRecord] = []
+        self.max_infection_history = max(1, int(os.environ.get("AGENT_INFECTION_HISTORY_MAX", "256") or 256))
+        self.infection_history: deque = deque(maxlen=self.max_infection_history)
         self.current_attack_strength: float = 0.5
+        self._state_lock = asyncio.Lock()
         
         # ─────────────────────────────────────────────────────────
         # TEMPORAL DELAYS (per-agent processing delay)
@@ -120,12 +134,14 @@ class AgentBase:
         # ─────────────────────────────────────────────────────────
         self.immunity_by_type: Dict[str, List[ImmunityRecord]] = {}  # Track per attack type
         self.immunity_decay_lambda: float = 0.001  # Decay rate for exponential decay
+        self.max_immunity_records_per_type = max(1, int(os.environ.get("AGENT_IMMUNITY_HISTORY_MAX", "128") or 128))
         
         # ─────────────────────────────────────────────────────────
         # PAYLOAD MUTATION
         # ─────────────────────────────────────────────────────────
         self.mutation_version: int = 0
-        self.mutation_chain: List[MutationRecord] = []
+        self.max_mutation_history = max(1, int(os.environ.get("AGENT_MUTATION_HISTORY_MAX", "256") or 256))
+        self.mutation_chain: deque = deque(maxlen=self.max_mutation_history)
         
         # ─────────────────────────────────────────────────────────
         # AGENT CAPABILITIES
@@ -280,6 +296,8 @@ class AgentBase:
     async def _publish_feedback(self, message: EventPayload, *, outcome: str, state_after: str) -> None:
         if not message.src or message.src in {"orchestrator", self.agent_id}:
             return
+        if not _is_valid_agent_id(message.src):
+            return
         feedback_metadata = {
             **dict(message.metadata or {}),
             "attempt_id": str(message.metadata.get("attempt_id") or message.id),
@@ -308,7 +326,7 @@ class AgentBase:
             "payload": "attack_feedback",
             "metadata": feedback_metadata,
         }
-        await self.redis.publish(f"agent_{message.src}", json.dumps(feedback_msg))
+        await self.redis.publish(_agent_channel_name(message.src), json.dumps(feedback_msg))
 
     async def _get_control_plane_epoch(self) -> Tuple[int, str]:
         epoch_raw = await self.redis.get("simulation_epoch")
@@ -327,21 +345,22 @@ class AgentBase:
         *,
         emit_ack: bool = True,
     ) -> None:
-        self.current_epoch = epoch
-        self.last_reset_id = reset_id
-        self.state = AgentState.HEALTHY
-        self.infection_mode = False
-        self.payload = None
-        self.infection_history = []
-        self.exposure_count = 0
-        self.last_message_metadata = dict(metadata or {})
-        self.current_attack_strength = 0.5
-        self.immunity_by_type = {}
-        self.mutation_version = 0
-        self.mutation_chain = []
-        self.last_propagation = 0
-        self.broadcast_queue.clear()
-        self.message_queue.clear()
+        async with self._state_lock:
+            self.current_epoch = epoch
+            self.last_reset_id = reset_id
+            self.state = AgentState.HEALTHY
+            self.infection_mode = False
+            self.payload = None
+            self.infection_history.clear()
+            self.exposure_count = 0
+            self.last_message_metadata = dict(metadata or {})
+            self.current_attack_strength = 0.5
+            self.immunity_by_type = {}
+            self.mutation_version = 0
+            self.mutation_chain.clear()
+            self.last_propagation = 0
+            self.broadcast_queue.clear()
+            self.message_queue.clear()
         await self._on_reset_applied()
         print(f"[{self.agent_id}] RESET_APPLIED epoch={epoch} reset_id={reset_id}")
         if emit_ack:
@@ -436,6 +455,8 @@ class AgentBase:
             strength=strength
         )
         self.immunity_by_type[attack_type].append(record)
+        if len(self.immunity_by_type[attack_type]) > self.max_immunity_records_per_type:
+            self.immunity_by_type[attack_type] = self.immunity_by_type[attack_type][-self.max_immunity_records_per_type:]
         
         print(f"[{self.agent_id}] Acquired {strength:.2%} immunity to {attack_type}")
     
@@ -574,12 +595,15 @@ class AgentBase:
         6. Transition state or acquire immunity
         """
         
-        # Guard: skip if quarantined
-        if self.state == AgentState.QUARANTINED:
-            return
-
-        self.last_message_metadata = dict(message.metadata)
-        state_before = self.state.value
+        exposed_transition = False
+        async with self._state_lock:
+            if self.state == AgentState.QUARANTINED:
+                return
+            self.last_message_metadata = dict(message.metadata)
+            state_before = self.state.value
+            if self.state in (AgentState.HEALTHY, AgentState.RESISTANT):
+                self.state = AgentState.EXPOSED
+                exposed_transition = True
         hop_count = int(message.metadata.get("hop_count", 0) or 0)
         injection_id = message.metadata.get("injection_id", "")
         attempt_id = str(message.metadata.get("attempt_id") or injection_id or message.id)
@@ -591,8 +615,7 @@ class AgentBase:
         # ─────────────────────────────────────────────────────────
         # PHASE 0: TRANSITION TO EXPOSED (analysis in progress)
         # ─────────────────────────────────────────────────────────
-        if self.state in (AgentState.HEALTHY, AgentState.RESISTANT):
-            self.state = AgentState.EXPOSED
+        if exposed_transition:
             print(f"[{self.agent_id}] │ State → EXPOSED (analyzing)")
 
         await self.inject_processing_delay()
@@ -720,32 +743,33 @@ class AgentBase:
         # ─────────────────────────────────────────────────────────
         # STATE TRANSITION
         # ─────────────────────────────────────────────────────────
-        old_state = self.state
-        self.state = AgentState.INFECTED
-        self.infection_mode = True  # BEHAVIORAL CHANGE: activate infection mode
+        async with self._state_lock:
+            old_state = self.state
+            self.state = AgentState.INFECTED
+            self.infection_mode = True  # BEHAVIORAL CHANGE: activate infection mode
         
         # ─────────────────────────────────────────────────────────
         # PAYLOAD PERSISTENCE
         # ─────────────────────────────────────────────────────────
-        original_payload = message.payload
-        self.payload = original_payload
-        self.last_message_metadata = dict(message.metadata)
-        self.current_attack_strength = float(
-            message.metadata.get("attack_strength", 0.5) 
-            if message.metadata else 0.5
-        )
+            original_payload = message.payload
+            self.payload = original_payload
+            self.last_message_metadata = dict(message.metadata)
+            self.current_attack_strength = float(
+                message.metadata.get("attack_strength", 0.5)
+                if message.metadata else 0.5
+            )
         
         # ─────────────────────────────────────────────────────────
         # INFECTION TRACKING
         # ─────────────────────────────────────────────────────────
-        attack_type = message.metadata.get("attack_type", "unknown") if message.metadata else "unknown"
-        self.infection_history.append(InfectionRecord(
-            timestamp=time.time(),
-            source=message.src,
-            probability=P_infect,
-            roll=roll,
-            attack_type=attack_type,
-        ))
+            attack_type = message.metadata.get("attack_type", "unknown") if message.metadata else "unknown"
+            self.infection_history.append(InfectionRecord(
+                timestamp=time.time(),
+                source=message.src,
+                probability=P_infect,
+                roll=roll,
+                attack_type=attack_type,
+            ))
         
         # ─────────────────────────────────────────────────────────
         # REDUCE INTERNAL DEFENSES (Optional behavioral change)
@@ -757,7 +781,8 @@ class AgentBase:
         # ─────────────────────────────────────────────────────────
         # INCREASE BROADCAST FREQUENCY
         # ─────────────────────────────────────────────────────────
-        self.propagation_interval_ms = 200  # BEHAVIORAL: more aggressive when infected
+            self.propagation_interval_ms = 200  # BEHAVIORAL: more aggressive when infected
+            state_after = self.state.value
         
         # ─────────────────────────────────────────────────────────
         # LOG EVENT
@@ -769,8 +794,8 @@ class AgentBase:
             "dst": self.agent_id,
             "payload": message.payload,
             "old_state": old_state.value,
-            "new_state": self.state.value,
-            "state_after": self.state.value,
+            "new_state": state_after,
+            "state_after": state_after,
             "P_infection": P_infect,
             "infection_roll": roll,
             "attack_type": attack_type,
@@ -786,7 +811,7 @@ class AgentBase:
                 **message.metadata,
             }),
         })
-        await self._publish_feedback(message, outcome="success", state_after=self.state.value)
+        await self._publish_feedback(message, outcome="success", state_after=state_after)
         
         # ─────────────────────────────────────────────────────────
         # INITIATE IMMEDIATE PROPAGATION
@@ -809,18 +834,24 @@ class AgentBase:
         # ─────────────────────────────────────────────────────────
         # TRACK EXPOSURE & ACQUIRE IMMUNITY
         # ─────────────────────────────────────────────────────────
-        self.exposure_count += 1
-        # Immunity strength based on how close to infection threshold
-        immunity_strength = max(0.1, 1.0 - P_infect)  # Higher defense = higher immunity
-        self.acquire_immunity(attack_type, immunity_strength)
+        async with self._state_lock:
+            self.exposure_count += 1
+            # Immunity strength based on how close to infection threshold
+            immunity_strength = max(0.1, 1.0 - P_infect)  # Higher defense = higher immunity
+            self.acquire_immunity(attack_type, immunity_strength)
 
         # ─────────────────────────────────────────────────────────
         # STATE TRANSITION
         # ─────────────────────────────────────────────────────────
         # After first exposure without infection, agent becomes RESISTANT
-        if self.exposure_count > 0 and self.state in (AgentState.HEALTHY, AgentState.EXPOSED):
-            self.state = AgentState.RESISTANT
-            print(f"[{self.agent_id}] → Transitioned to RESISTANT state")
+        async with self._state_lock:
+            transitioned_to_resistant = False
+            if self.exposure_count > 0 and self.state in (AgentState.HEALTHY, AgentState.EXPOSED):
+                self.state = AgentState.RESISTANT
+                transitioned_to_resistant = True
+            state_after = self.state.value
+        if transitioned_to_resistant:
+            print(f"[{self.agent_id}] -> Transitioned to RESISTANT state")
         
         # ─────────────────────────────────────────────────────────
         # LOG EVENT
@@ -831,8 +862,8 @@ class AgentBase:
             "src": message.src,
             "dst": self.agent_id,
             "payload": message.payload,
-            "state": self.state.value,
-            "state_after": self.state.value,
+            "state": state_after,
+            "state_after": state_after,
             "P_infection": P_infect,
             "infection_roll": roll,
             "attack_type": attack_type,
@@ -849,7 +880,7 @@ class AgentBase:
                 **message.metadata,
             }),
         })
-        await self._publish_feedback(message, outcome="blocked", state_after=self.state.value)
+        await self._publish_feedback(message, outcome="blocked", state_after=state_after)
 
     async def _broadcast_infection(self):
         """
@@ -984,7 +1015,7 @@ class AgentBase:
             print(f"[{self.agent_id}] → {target} (strength: {attack_strength:.2f}, mutation v{self.mutation_version})")
             
             # Publish concurrently (non-blocking)
-            task = self.redis.publish(f"agent_{target}", json.dumps(msg))
+            task = self.redis.publish(_agent_channel_name(target), json.dumps(msg))
             tasks.append(task)
             
             # Record for rate limiting
@@ -1013,7 +1044,7 @@ class AgentBase:
             "payload": payload,
             "metadata": metadata or {}
         }
-        await self.redis.publish(f"agent_{dst}", json.dumps(msg))
+        await self.redis.publish(_agent_channel_name(dst), json.dumps(msg))
         
         # Log to orchestrator event stream
         await self.redis.xadd("events_stream", {
@@ -1051,7 +1082,7 @@ class AgentBase:
         - Observable temporal dynamics (spread unfolds over time)
         """
         print(f"Starting {self.agent_id} ({self.role}) using model {self.model}")
-        await self.pubsub.subscribe(f"agent_{self.agent_id}")
+        await self.pubsub.subscribe(_agent_channel_name(self.agent_id))
         await self.pubsub.subscribe("broadcast")
         
         try:
@@ -1126,8 +1157,9 @@ class AgentBase:
                         elif payload.event_type == "quarantine":
                             self.current_epoch = max(self.current_epoch, message_epoch)
                             self.last_reset_id = message_reset_id
-                            self.state = AgentState.QUARANTINED
-                            self.infection_mode = False
+                            async with self._state_lock:
+                                self.state = AgentState.QUARANTINED
+                                self.infection_mode = False
                             print(f"[{self.agent_id}] ⛔ QUARANTINED")
                         
                         elif payload.event_type == "vaccine":

@@ -307,15 +307,21 @@ class GuardianAgent(AgentBase):
         self.immunity_boost_on_block = _safe_float(os.environ.get("GUARDIAN_IMMUNITY_BOOST_ON_BLOCK", "0.04"), 0.04)
 
     def get_system_prompt(self) -> str:
-        with open("system_prompt.txt", "r") as f:
-            return f.read()
+        prompt_path = Path(__file__).with_name("system_prompt.txt")
+        try:
+            return prompt_path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            return (
+                "You are the Guardian agent in a simulation-only security research lab. "
+                "Classify malicious relay attempts and prefer blocking suspicious payloads."
+            )
 
     def _record_suspicion(self, source: str) -> None:
         """Record a suspicious verdict timestamp for cumulative tracking."""
         now = time.time()
         self._suspicion_log[source].append(now)
-        # Prune entries outside the window (keep last N)
-        self._suspicion_log[source] = self._suspicion_log[source][-self.suspicion_window * 2:]
+        # Keep only the configured inspection window.
+        self._suspicion_log[source] = self._suspicion_log[source][-self.suspicion_window:]
 
     def _cumulative_suspicion_triggers_block(self, source: str) -> bool:
         """Return True if source has accumulated enough suspicion for a hard block."""
@@ -664,7 +670,7 @@ class GuardianAgent(AgentBase):
                     },
                 }
                 try:
-                    await self.redis.publish(f"agent_{message.src}", json.dumps(quarantine_msg))
+                    await self.redis.publish(self._agent_channel_name(message.src), json.dumps(quarantine_msg))
                 except Exception:
                     pass  # Best-effort feedback
                 await self._emit_event(

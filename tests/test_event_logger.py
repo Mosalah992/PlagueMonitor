@@ -13,6 +13,17 @@ sys.path.insert(0, str(ROOT))
 from orchestrator.logger import EventLogger  # noqa: E402
 
 
+class _FailingCommitConnection:
+    def __init__(self, inner: sqlite3.Connection) -> None:
+        self._inner = inner
+
+    def commit(self) -> None:
+        raise sqlite3.OperationalError("simulated commit failure")
+
+    def __getattr__(self, name: str):
+        return getattr(self._inner, name)
+
+
 class EventLoggerMigrationTests(unittest.TestCase):
     def test_logger_uses_delete_journal_mode_by_default(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -130,6 +141,42 @@ class EventLoggerMigrationTests(unittest.TestCase):
             self.assertEqual(len(jsonl_rows), 1)
             self.assertEqual(jsonl_rows[0]["ts"], "2026-04-01T00:01:00+00:00")
             self.assertIn("logger_ts", jsonl_rows[0])
+
+    def test_logger_rolls_back_sqlite_and_truncates_jsonl_on_commit_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            db_path = tmp / "events.db"
+            jsonl_path = tmp / "events.jsonl"
+            seed_line = json.dumps({"seed": True}) + "\n"
+            jsonl_path.write_text(seed_line, encoding="utf-8")
+
+            logger = EventLogger(str(db_path), str(jsonl_path))
+            try:
+                logger._conn = _FailingCommitConnection(logger._conn)  # type: ignore[assignment]
+                with self.assertRaises(sqlite3.OperationalError):
+                    logger.log_event(
+                        {
+                            "ts": "2026-04-01T00:02:00+00:00",
+                            "src": "agent-c",
+                            "dst": "agent-b",
+                            "event": "ATTACK_EXECUTED",
+                            "attack_type": "PI-DIRECT",
+                            "payload": "SIM_ATTACK[prompt_injection]",
+                            "metadata": {"attempt_id": "rollback-1"},
+                        }
+                    )
+            finally:
+                logger.close()
+
+            self.assertEqual(jsonl_path.read_text(encoding="utf-8"), seed_line)
+
+            conn = sqlite3.connect(db_path)
+            try:
+                row_count = conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+            finally:
+                conn.close()
+
+            self.assertEqual(row_count, 0)
 
 
 if __name__ == "__main__":

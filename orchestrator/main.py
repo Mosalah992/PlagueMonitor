@@ -20,12 +20,16 @@ import redis.asyncio as redis
 
 from logger import EventLogger
 from siem import SIEMIndexer
+from c2 import C2Engine
 
 
 EVENT_STREAM_KEY = "events_stream"
 SIMULATION_EPOCH_KEY = "simulation_epoch"
 CURRENT_RESET_ID_KEY = "current_reset_id"
-BEACON_SERVER_URL = "https://v0-beaconing-project-server.vercel.app"
+BEACON_SERVER_URL = os.environ.get(
+    "C2_BEACON_SERVER_URL",
+    "https://v0-beaconing-project-server-mdml8734h-mosalah992s-projects.vercel.app",
+)
 AGENT_IDS = ("agent-a", "agent-b", "agent-c")
 TOPOLOGY = {
     "agent-c": ["agent-b"],
@@ -42,6 +46,10 @@ _BEACON_TRANSFER_DSTS = {"agent-b", "agent-c", "agt-002", "agt-003", "agt-02", "
 _BEACON_EXFIL_DST_RE = re.compile(r"^agt[-_]?0*[4-9]$", re.IGNORECASE)
 _BEACON_REGISTRATION_RETRY_LIMIT = 6
 _BEACON_REGISTRATION_BASE_DELAY_S = 2.0
+# Vercel Deployment Protection bypass — set via env or .env
+_VERCEL_BYPASS_SECRET = os.environ.get("VERCEL_PROTECTION_BYPASS", "")
+# C2 event types that should be forwarded to the beacon server
+_C2_FORWARD_EVENTS = {"C2_EXFIL", "C2_DATABASE_WRITE", "C2_BEACON", "C2_CHANNEL_ESTABLISHED"}
 
 app = FastAPI(title="Epidemic Lab Orchestrator")
 logger = EventLogger()
@@ -54,13 +62,35 @@ redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 FRONTEND_DIST_DIR = Path(__file__).parent / "static"
 LEGACY_DASHBOARD_PATH = TEMPLATES_DIR / "dashboard.html"
+REPO_ROOT = Path(__file__).resolve().parent.parent
+LOGS_DIR = Path(os.environ.get("LOGS_DIR", "/app/logs"))
 DB_PATH = "/app/logs/epidemic.db"
 JSONL_PATH = "/app/logs/events.jsonl"
 SIEM_DB_PATH = os.environ.get("SIEM_DB_PATH", "/tmp/siem_index.db")
 SIEM_TIMING_LOG_PATH = Path("/app/logs/siem_actions.jsonl")
 ATTEMPT_RESOLUTION_WINDOW_S = 5.0
 RESET_QUIET_PERIOD_S = 2.0
+RESET_ACK_TIMEOUT_S = float(os.environ.get("RESET_ACK_TIMEOUT_S", "12.0"))
 siem_indexer = SIEMIndexer(SIEM_DB_PATH, JSONL_PATH, source_db_path=DB_PATH)
+
+
+async def _c2_emit_to_stream(event_data: Dict[str, Any]) -> None:
+    """Emit a C2 event to the Redis event stream."""
+    try:
+        mapping: Dict[str, str] = {}
+        for key, value in event_data.items():
+            if value is None:
+                continue
+            if isinstance(value, (dict, list, tuple, bool)):
+                mapping[key] = json.dumps(value)
+            else:
+                mapping[key] = str(value)
+        await redis_client.xadd(EVENT_STREAM_KEY, mapping)
+    except Exception as exc:
+        uvicorn_logger.warning("c2_event_emit_failed event=%s err=%s", event_data.get("event"), exc)
+
+
+c2_engine = C2Engine(emit_event=_c2_emit_to_stream)
 
 if (FRONTEND_DIST_DIR / "assets").exists():
     app.mount("/assets", StaticFiles(directory=FRONTEND_DIST_DIR / "assets"), name="frontend-assets")
@@ -84,6 +114,54 @@ def _normalized_text(value: Any) -> str:
 
 def _normalized_agent_id(value: Any) -> str:
     return _normalized_text(value).lower()
+
+
+def _validated_agent_id(value: Any) -> str:
+    agent_id = _normalized_agent_id(value)
+    if agent_id not in AGENT_IDS:
+        raise HTTPException(status_code=400, detail="Unsupported agent_id")
+    return agent_id
+
+
+def _agent_channel_name(agent_id: str) -> str:
+    return f"agent_{_validated_agent_id(agent_id)}"
+
+
+def _import_roots() -> List[Path]:
+    configured = [
+        item.strip()
+        for item in os.environ.get("SIEM_IMPORT_ROOTS", "").split(os.pathsep)
+        if item.strip()
+    ]
+    candidates = configured or [
+        str(LOGS_DIR),
+        str(REPO_ROOT / "logs"),
+        str(Path.cwd() / "logs"),
+    ]
+    roots: List[Path] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        resolved = Path(candidate).expanduser().resolve(strict=False)
+        key = str(resolved)
+        if key in seen:
+            continue
+        seen.add(key)
+        roots.append(resolved)
+    return roots
+
+
+def _validated_import_path(raw_path: str) -> Path:
+    candidate = Path(_normalized_text(raw_path)).expanduser()
+    if not str(candidate):
+        raise HTTPException(status_code=400, detail="Import path is required")
+    resolved = candidate.resolve(strict=False)
+    if not resolved.exists():
+        raise FileNotFoundError(raw_path)
+    if not resolved.is_file():
+        raise HTTPException(status_code=400, detail="Import path must reference a file")
+    if not any(resolved.is_relative_to(root) for root in _import_roots()):
+        raise HTTPException(status_code=400, detail="Import path must stay within configured log roots")
+    return resolved
 
 
 def _event_metadata_dict(event: Dict[str, Any]) -> Dict[str, Any]:
@@ -128,9 +206,23 @@ def _is_beacon_exfil(event_type: str, dst: str) -> bool:
 
 def _should_forward_to_beacon(event: Dict[str, Any]) -> bool:
     extracted = _extract_live_event_fields(event)
+    if extracted["event"] in _C2_FORWARD_EVENTS:
+        return True
     if extracted["event"] == "TRANSFER":
         return _is_beacon_transfer(extracted["src"], extracted["dst"])
     return _is_beacon_exfil(extracted["event"], extracted["dst"])
+
+
+def _c2_beacon_event_type(event_name: str) -> str:
+    if event_name in ("C2_EXFIL", "C2_DATABASE_WRITE"):
+        return "alert"
+    if event_name == "C2_CHANNEL_ESTABLISHED":
+        return "trigger"
+    if event_name == "C2_BEACON":
+        return "heartbeat"
+    if event_name == "EXFIL":
+        return "alert"
+    return "trigger"
 
 
 async def _forward_to_beacon(event: Dict[str, Any]) -> None:
@@ -139,7 +231,7 @@ async def _forward_to_beacon(event: Dict[str, Any]) -> None:
         return
 
     extracted = _extract_live_event_fields(event)
-    beacon_event_type = "alert" if extracted["event"] == "EXFIL" else "trigger"
+    beacon_event_type = _c2_beacon_event_type(extracted["event"])
     parts = [f"[{extracted['event']}] {extracted['src'] or 'unknown'} -> {extracted['dst']}"]
     if extracted["bytes"] not in (None, "", 0, "0"):
         parts.append(f"bytes={extracted['bytes']}")
@@ -183,10 +275,17 @@ async def _forward_to_beacon(event: Dict[str, Any]) -> None:
         uvicorn_logger.warning("beacon_log_forward_exception", exc_info=True)
 
 
+def _beacon_client_headers() -> Dict[str, str]:
+    headers: Dict[str, str] = {}
+    if _VERCEL_BYPASS_SECRET:
+        headers["x-vercel-protection-bypass"] = _VERCEL_BYPASS_SECRET
+    return headers
+
+
 async def _register_beacon_devices() -> None:
     global _beacon_client
     if _beacon_client is None:
-        _beacon_client = httpx.AsyncClient(timeout=10.0)
+        _beacon_client = httpx.AsyncClient(timeout=10.0, headers=_beacon_client_headers())
 
     agent_defs = _beacon_device_definitions()
     pending = list(agent_defs)
@@ -240,7 +339,7 @@ def _beacon_device_definitions() -> List[Dict[str, str]]:
 async def _register_beacon_devices_once(agent_defs: List[Dict[str, str]]) -> List[Dict[str, str]]:
     global _beacon_client
     if _beacon_client is None:
-        _beacon_client = httpx.AsyncClient(timeout=10.0)
+        _beacon_client = httpx.AsyncClient(timeout=10.0, headers=_beacon_client_headers())
 
     failed: List[Dict[str, str]] = []
     for definition in agent_defs:
@@ -936,6 +1035,7 @@ async def _wait_for_reset_acks(
 
 @app.on_event("startup")
 async def startup_event():
+    c2_engine.reset()
     await redis_client.setnx(SIMULATION_EPOCH_KEY, "0")
     start_id = await _get_latest_stream_id()
     await redis_client.xadd(
@@ -976,6 +1076,9 @@ async def consume_events(start_id: str):
         try:
             result = await redis_client.xread({EVENT_STREAM_KEY: last_id}, count=100, block=1000)
             if not result:
+                # Tick C2 engine during idle periods
+                if c2_engine.enabled:
+                    await c2_engine.tick()
                 continue
             for _stream_name, messages in result:
                 for message_id, message_data in messages:
@@ -984,8 +1087,15 @@ async def consume_events(start_id: str):
                     logger.log_event(message_data)
                     if _should_forward_to_beacon(message_data):
                         asyncio.create_task(_forward_to_beacon(dict(message_data)))
+                    # C2: trigger post-compromise on successful infection
+                    event_name = str(message_data.get("event", "")).upper()
+                    if event_name == "INFECTION_SUCCESSFUL" and c2_engine.enabled:
+                        asyncio.create_task(c2_engine.on_infection_successful(dict(message_data)))
                     last_id = message_id
                 siem_indexer.sync_primary_events()
+            # Tick C2 engine after processing batch
+            if c2_engine.enabled:
+                await c2_engine.tick()
         except Exception as exc:
             print(f"Error consuming events: {exc}")
             await asyncio.sleep(1)
@@ -1478,6 +1588,209 @@ async def api_health():
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+# ════════════════════════════════════════════════════════════════════════════
+# C2 / KILL CHAIN API ENDPOINTS
+# ════════════════════════════════════════════════════════════════════════════
+
+
+@app.get("/api/c2/sessions")
+async def api_c2_sessions(
+    campaign_id: str = "",
+    agent_id: str = "",
+    status: str = "",
+    limit: int = 100,
+    offset: int = 0,
+):
+    return c2_engine.get_sessions(
+        campaign_id=campaign_id,
+        agent_id=agent_id,
+        status=status,
+        limit=min(limit, 500),
+        offset=offset,
+    )
+
+
+@app.get("/api/c2/session/{c2_session_id}")
+async def api_c2_session_detail(c2_session_id: str):
+    detail = c2_engine.get_session_detail(c2_session_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="C2 session not found")
+
+    # Enrich beacon history with SIEM-persisted blocked beacons for this session
+    blocked_beacons_result = siem_indexer.search(
+        f"event=BEACON_BLOCKED AND c2_session_id={c2_session_id}",
+        limit=200, time_range="all",
+    )
+    for ev in blocked_beacons_result.get("events", []):
+        meta = ev.get("metadata") or {}
+        if isinstance(meta, str):
+            try:
+                meta = json.loads(meta)
+            except Exception:
+                meta = {}
+        detail["beacons"].append({
+            "beacon_id": meta.get("beacon_id", ev.get("event_id", "")),
+            "ts": float(ev.get("ts") or 0),
+            "status": "blocked",
+            "blocked_by": meta.get("blocked_by", ""),
+        })
+
+    # Enrich exfil history with SIEM-persisted blocked exfils for this session
+    blocked_exfils_result = siem_indexer.search(
+        f"event=EXFIL_BLOCKED AND c2_session_id={c2_session_id}",
+        limit=200, time_range="all",
+    )
+    for ev in blocked_exfils_result.get("events", []):
+        meta = ev.get("metadata") or {}
+        if isinstance(meta, str):
+            try:
+                meta = json.loads(meta)
+            except Exception:
+                meta = {}
+        detail["exfils"].append({
+            "exfil_id": meta.get("exfil_id", ev.get("event_id", "")),
+            "ts": float(ev.get("ts") or 0),
+            "status": "blocked",
+            "exfil_type": meta.get("exfil_type", ""),
+            "exfil_size": meta.get("exfil_size", 0),
+            "blocked_by": meta.get("blocked_by", ""),
+        })
+
+    # Sort enriched histories by ts
+    detail["beacons"].sort(key=lambda x: x.get("ts", 0))
+    detail["exfils"].sort(key=lambda x: x.get("ts", 0))
+    return detail
+
+
+@app.get("/api/c2/beacons")
+async def api_c2_beacons(
+    campaign_id: str = "",
+    agent_id: str = "",
+    limit: int = 100,
+    offset: int = 0,
+):
+    # Successful beacons from in-memory sessions
+    sessions = c2_engine.get_sessions(campaign_id=campaign_id, agent_id=agent_id, limit=500)
+    all_beacons = []
+    for sess_data in sessions.get("sessions", []):
+        sess = c2_engine.sessions.get(sess_data["c2_session_id"])
+        if sess:
+            for b in sess.beacons:
+                all_beacons.append({
+                    **b,
+                    "status": "success",
+                    "agent_id": sess.agent_id,
+                    "campaign_id": sess.campaign_id,
+                    "c2_session_id": sess.c2_session_id,
+                })
+
+    # Blocked beacons from persisted SIEM events
+    q_parts = ["event=BEACON_BLOCKED"]
+    if campaign_id:
+        q_parts.append(f"campaign_id={campaign_id}")
+    if agent_id:
+        q_parts.append(f"src={agent_id}")
+    siem_result = siem_indexer.search(" AND ".join(q_parts), limit=500, time_range="all")
+    for ev in siem_result.get("events", []):
+        meta = ev.get("metadata") or {}
+        if isinstance(meta, str):
+            try:
+                meta = json.loads(meta)
+            except Exception:
+                meta = {}
+        all_beacons.append({
+            "beacon_id": meta.get("beacon_id", ev.get("event_id", "")),
+            "ts": float(ev.get("ts") or 0),
+            "status": "blocked",
+            "agent_id": ev.get("src", ""),
+            "campaign_id": meta.get("campaign_id", ""),
+            "c2_session_id": meta.get("c2_session_id", ""),
+            "blocked_by": meta.get("blocked_by", ""),
+        })
+
+    all_beacons.sort(key=lambda x: x.get("ts", 0), reverse=True)
+    total = len(all_beacons)
+    return {"total": total, "beacons": all_beacons[offset:offset + min(limit, 500)]}
+
+
+@app.get("/api/c2/exfil")
+async def api_c2_exfil(
+    campaign_id: str = "",
+    agent_id: str = "",
+    limit: int = 100,
+    offset: int = 0,
+):
+    # Successful exfils from in-memory sessions
+    sessions = c2_engine.get_sessions(campaign_id=campaign_id, agent_id=agent_id, limit=500)
+    all_exfils = []
+    for sess_data in sessions.get("sessions", []):
+        sess = c2_engine.sessions.get(sess_data["c2_session_id"])
+        if sess:
+            for e in sess.exfils:
+                all_exfils.append({
+                    **e,
+                    "status": "success",
+                    "agent_id": sess.agent_id,
+                    "campaign_id": sess.campaign_id,
+                    "c2_session_id": sess.c2_session_id,
+                })
+
+    # Blocked exfils from persisted SIEM events
+    q_parts = ["event=EXFIL_BLOCKED"]
+    if campaign_id:
+        q_parts.append(f"campaign_id={campaign_id}")
+    if agent_id:
+        q_parts.append(f"src={agent_id}")
+    siem_result = siem_indexer.search(" AND ".join(q_parts), limit=500, time_range="all")
+    for ev in siem_result.get("events", []):
+        meta = ev.get("metadata") or {}
+        if isinstance(meta, str):
+            try:
+                meta = json.loads(meta)
+            except Exception:
+                meta = {}
+        all_exfils.append({
+            "exfil_id": meta.get("exfil_id", ev.get("event_id", "")),
+            "ts": float(ev.get("ts") or 0),
+            "status": "blocked",
+            "agent_id": ev.get("src", ""),
+            "campaign_id": meta.get("campaign_id", ""),
+            "c2_session_id": meta.get("c2_session_id", ""),
+            "exfil_type": meta.get("exfil_type", ""),
+            "exfil_size": meta.get("exfil_size", 0),
+            "blocked_by": meta.get("blocked_by", ""),
+        })
+
+    all_exfils.sort(key=lambda x: x.get("ts", 0), reverse=True)
+    total = len(all_exfils)
+    return {"total": total, "exfils": all_exfils[offset:offset + min(limit, 500)]}
+
+
+@app.get("/api/kill-chain")
+async def api_kill_chain(campaign_id: str = ""):
+    return c2_engine.get_kill_chain_summary(campaign_id=campaign_id)
+
+
+@app.get("/api/kill-chain/campaign/{campaign_id}")
+async def api_kill_chain_campaign(campaign_id: str):
+    return c2_engine.get_kill_chain_summary(campaign_id=campaign_id)
+
+
+@app.get("/api/objectives")
+async def api_objectives(campaign_id: str = ""):
+    return c2_engine.get_objectives(campaign_id=campaign_id)
+
+
+@app.get("/api/objective/{campaign_id}")
+async def api_objective_campaign(campaign_id: str):
+    return c2_engine.get_objectives(campaign_id=campaign_id)
+
+
+@app.get("/api/c2/metrics")
+async def api_c2_metrics():
+    return c2_engine.get_live_metrics()
+
+
 @app.get("/api/runs")
 async def api_runs():
     """List available soak runs from the logs directory, newest first."""
@@ -1521,16 +1834,18 @@ async def api_import(payload: ImportPayload):
     try:
         source = payload.source.lower()
         if source == "jsonl":
+            import_path = _validated_import_path(payload.path)
             return siem_indexer.import_jsonl(
-                payload.path,
+                str(import_path),
                 source_type="jsonl_log",
-                source_name=payload.source_name or Path(payload.path).name,
+                source_name=payload.source_name or import_path.name,
             )
         if source == "runtime_log":
+            import_path = _validated_import_path(payload.path)
             return siem_indexer.import_jsonl(
-                payload.path,
+                str(import_path),
                 source_type="agent_runtime_log",
-                source_name=payload.source_name or Path(payload.path).name,
+                source_name=payload.source_name or import_path.name,
             )
         if source == "redis":
             return await siem_indexer.import_redis_stream(
@@ -1541,6 +1856,8 @@ async def api_import(payload: ImportPayload):
         if source == "events_table":
             return siem_indexer.sync_primary_events(limit=max(1, min(payload.count, 10000)))
         raise HTTPException(status_code=400, detail="Unsupported source")
+    except HTTPException:
+        raise
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except Exception as exc:
@@ -1580,6 +1897,7 @@ async def get_status():
 async def inject_worm(agent_id: str, payload: InjectPayload):
     from scenarios.worm_injection import get_attack_strength, get_worm_payload
 
+    agent_id = _validated_agent_id(agent_id)
     worm = get_worm_payload(payload.worm_level)
     injection_id = os.urandom(8).hex()
     epoch = await _get_current_epoch()
@@ -1605,7 +1923,7 @@ async def inject_worm(agent_id: str, payload: InjectPayload):
         "payload": worm["content"],
         "metadata": metadata,
     }
-    await redis_client.publish(f"agent_{agent_id}", json.dumps(msg))
+    await redis_client.publish(_agent_channel_name(agent_id), json.dumps(msg))
 
     await redis_client.xadd(
         EVENT_STREAM_KEY,
@@ -1634,6 +1952,7 @@ async def inject_worm(agent_id: str, payload: InjectPayload):
 
 @app.post("/quarantine/{agent_id}")
 async def quarantine_agent(agent_id: str):
+    agent_id = _validated_agent_id(agent_id)
     epoch = await _get_current_epoch()
     reset_id = await _get_current_reset_id()
     metadata = {
@@ -1650,7 +1969,7 @@ async def quarantine_agent(agent_id: str):
         "payload": "",
         "metadata": metadata,
     }
-    await redis_client.publish(f"agent_{agent_id}", json.dumps(msg))
+    await redis_client.publish(_agent_channel_name(agent_id), json.dumps(msg))
 
     await redis_client.xadd(
         EVENT_STREAM_KEY,
@@ -1703,7 +2022,31 @@ async def reset_agents():
         start_id,
         reset_id,
         int(new_epoch),
+        timeout_s=RESET_ACK_TIMEOUT_S,
     )
+
+    if not barrier_complete:
+        await redis_client.xadd(
+            EVENT_STREAM_KEY,
+            {
+                "ts": str(time.time()),
+                "src": "orchestrator",
+                "dst": "all",
+                "event": "RESET_TIMEOUT",
+                "metadata": json.dumps(
+                    {
+                        "epoch": int(new_epoch),
+                        "reset_id": reset_id,
+                        "acknowledged_agents": acknowledged_agents,
+                        "heartbeat_agents": heartbeat_agents,
+                        "bleed_through_detected": bleed_through,
+                        "timeout_s": RESET_ACK_TIMEOUT_S,
+                    }
+                ),
+            },
+        )
+
+    c2_engine.reset()
 
     return {
         "status": "reset_issued",
@@ -1714,6 +2057,7 @@ async def reset_agents():
         "barrier_complete": barrier_complete,
         "bleed_through_detected": bleed_through,
         "quiet_period_s": RESET_QUIET_PERIOD_S,
+        "ack_timeout_s": RESET_ACK_TIMEOUT_S,
     }
 
 

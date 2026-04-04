@@ -12,6 +12,7 @@ COPY orchestrator/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY orchestrator/ ./
+COPY agents/shared/kill_chain.py ./shared_kill_chain.py
 COPY --from=frontend-build /frontend/dist ./static
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

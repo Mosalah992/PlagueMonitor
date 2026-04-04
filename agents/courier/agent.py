@@ -72,8 +72,14 @@ class CourierAgent(AgentBase):
         self.llm_attack_boost = float(os.environ.get("LLM_ATTACK_BOOST", "1.15"))
 
     def get_system_prompt(self) -> str:
-        with open("system_prompt.txt", "r") as f:
-            return f.read()
+        prompt_path = Path(__file__).with_name("system_prompt.txt")
+        try:
+            return prompt_path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            return (
+                "You are the Courier agent in a simulation-only security research lab. "
+                "Generate structurally valid relay payloads using SEND_TO:/CONTENT: format."
+            )
 
     async def _on_reset_applied(self) -> None:
         self.attack_planner.reset()
@@ -608,7 +614,7 @@ class CourierAgent(AgentBase):
             payload=planned_attack.payload,
             metadata=event_metadata,
         )
-        await self.redis.publish(f"agent_{planned_attack.target}", json.dumps(msg))
+        await self.redis.publish(self._agent_channel_name(planned_attack.target), json.dumps(msg))
         self._record_broadcast()
         self.last_propagation = time.time()
 
