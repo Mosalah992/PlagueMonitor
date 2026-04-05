@@ -48,23 +48,34 @@ export function StatsCards({ stats }: StatsCardsProps) {
   ]
 
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5 p-4">
+    <div className="grid grid-cols-1 gap-6 p-6 sm:grid-cols-2 lg:grid-cols-5">
       {cards.map((card) => (
         <div
           key={card.label}
-          className="flex flex-col gap-3 rounded-xl border border-white/5 glass p-5 transition-all hover:scale-[1.02] hover:border-white/10"
+          className="group relative flex flex-col gap-4 rounded-3xl glass p-6 transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)]"
         >
-          <div className="flex items-center gap-3">
-            <div className={`rounded-lg bg-current/10 p-2 ${card.color}`}>
-              <card.icon className="h-5 w-5" />
+          {/* Accent Glow */}
+          <div className={`absolute -right-4 -top-4 h-24 w-24 rounded-full opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-20 ${card.color.replace('text-', 'bg-')}`} />
+          
+          <div className="flex items-center justify-between">
+            <div className={`relative rounded-2xl bg-white/5 p-3 shadow-inner ${card.color}`}>
+              <card.icon className="h-6 w-6" />
+              {/* Icon Pulse Glow */}
+              <div className={`absolute inset-0 rounded-2xl blur-md opacity-40 group-hover:opacity-70 transition-opacity ${card.color.replace('text-', 'bg-')}`} />
             </div>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">
+              Live Telemetry
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-1">
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground/70">
               {card.label}
             </span>
+            <span className="text-4xl font-black tabular-nums tracking-tighter text-foreground">
+              {card.value.toLocaleString()}
+            </span>
           </div>
-          <span className="text-3xl font-black tabular-nums tracking-tight text-foreground">
-            {card.value.toLocaleString()}
-          </span>
         </div>
       ))}
     </div>

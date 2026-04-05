@@ -28,15 +28,24 @@ export function DevicesTable({ agents }: DevicesTableProps) {
   }
 
   return (
-    <div className="overflow-hidden">
-      <div className="flex items-center gap-3 border-b border-white/10 p-6">
-        <div className="rounded-lg bg-info/20 p-2">
-          <Users className="h-5 w-5 text-info" />
+    <div className="flex flex-col gap-0 rounded-3xl glass overflow-hidden shadow-2xl">
+      <div className="flex items-center justify-between border-b border-white/10 bg-white/5 px-8 py-6">
+        <div className="flex items-center gap-4">
+          <div className="relative rounded-2xl bg-info/20 p-2.5">
+            <Users className="h-6 w-6 text-info" />
+            <div className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0a0a0a] bg-info pulse-slow" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black tracking-tight text-foreground">Agent Population</h2>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+              Real-time High-Fidelity Tracking
+            </p>
+          </div>
         </div>
-        <h2 className="text-xl font-bold tracking-tight text-foreground">Agent Population</h2>
-        <span className="ml-auto rounded-full bg-white/5 px-3 py-1 text-xs font-bold text-muted-foreground">
-          {agents.length} Agents
-        </span>
+        <div className="flex items-center gap-2 rounded-full bg-white/5 px-4 py-1.5 border border-white/5">
+          <span className="text-xs font-black text-foreground">{agents.length}</span>
+          <span className="text-[10px] font-bold uppercase tracking-tighter text-muted-foreground/60">Active Units</span>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">

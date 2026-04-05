@@ -56,41 +56,51 @@ export function LogsTable({
   const [expandedLog, setExpandedLog] = useState<string | null>(null)
 
   return (
-    <div className="overflow-hidden">
-      <div className="flex flex-col gap-6 border-b border-white/10 p-6 md:flex-row md:items-center">
-        <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-info/20 p-2">
-            <FileText className="h-5 w-5 text-info" />
+    <div className="flex flex-col gap-0 rounded-3xl glass overflow-hidden shadow-2xl">
+      <div className="flex flex-col gap-6 border-b border-white/10 bg-white/5 px-8 py-6 md:flex-row md:items-center">
+        <div className="flex items-center gap-4">
+          <div className="relative rounded-2xl bg-info/20 p-2.5">
+            <FileText className="h-6 w-6 text-info" />
+            <div className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0a0a0a] bg-info pulse-slow" />
           </div>
-          <h2 className="text-xl font-bold tracking-tight text-foreground">Simulation Events</h2>
-          <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-bold text-muted-foreground">
-            {total.toLocaleString()} Events
-          </span>
+          <div>
+            <h2 className="text-xl font-black tracking-tight text-foreground">Simulation Events</h2>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+              Infection Telemetry Stream
+            </p>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-3 md:ml-auto">
-          <select
-            value={selectedAgent}
-            onChange={(e) => onAgentChange(e.target.value)}
-            className="rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-info/50 appearance-none cursor-pointer"
-          >
-            <option value="all">All Agents</option>
-            {agents.map((agent) => (
-              <option key={agent.agent_id} value={agent.agent_id}>
-                {agent.name || agent.agent_id}
-              </option>
-            ))}
-          </select>
-          <select
-            value={selectedEventType}
-            onChange={(e) => onEventTypeChange(e.target.value)}
-            className="rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-info/50 appearance-none cursor-pointer"
-          >
-            {eventTypes.map((type) => (
-              <option key={type} value={type}>
-                {type === "all" ? "All Outcomes" : type.toUpperCase()}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-wrap items-center gap-3 md:ml-auto">
+          <div className="flex items-center gap-2 rounded-full bg-white/5 px-4 py-1.5 border border-white/5 mr-4">
+            <span className="text-xs font-black text-foreground">{total.toLocaleString()}</span>
+            <span className="text-[10px] font-bold uppercase tracking-tighter text-muted-foreground/60">Total Events</span>
+          </div>
+          
+          <div className="flex gap-2">
+            <select
+              value={selectedAgent}
+              onChange={(e) => onAgentChange(e.target.value)}
+              className="rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-info/50 appearance-none cursor-pointer hover:bg-black/60 transition-colors"
+            >
+              <option value="all">All Agents</option>
+              {agents.map((agent) => (
+                <option key={agent.agent_id} value={agent.agent_id}>
+                  {agent.name || agent.agent_id}
+                </option>
+              ))}
+            </select>
+            <select
+              value={selectedEventType}
+              onChange={(e) => onEventTypeChange(e.target.value)}
+              className="rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-info/50 appearance-none cursor-pointer hover:bg-black/60 transition-colors"
+            >
+              {eventTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type === "all" ? "All Outcomes" : type.toUpperCase()}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
       <div className="overflow-x-auto">
