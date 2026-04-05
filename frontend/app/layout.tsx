@@ -7,8 +7,8 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Beacon Monitor - Security Beacon Logging Server',
-  description: 'Monitor and log security beacons from your local beaconing project',
+  title: 'PlagueMonitor - AI Epidemic Simulation Platform',
+  description: 'High-fidelity real-time epidemic simulation and forecasting dashboard.',
   generator: 'v0.app',
   icons: {
     icon: [

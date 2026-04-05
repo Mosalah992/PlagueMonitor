@@ -10,45 +10,45 @@ import { LogsTable } from "@/components/dashboard/logs-table"
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export default function DashboardPage() {
-  const [selectedDevice, setSelectedDevice] = useState("all")
+  const [selectedAgent, setSelectedAgent] = useState("all")
   const [selectedEventType, setSelectedEventType] = useState("all")
   const [autoRefresh, setAutoRefresh] = useState(true)
-
+ 
   // Fetch stats
   const { data: statsData, mutate: mutateStats } = useSWR(
-    "/api/beacon/stats",
+    "/api/simulation/stats",
     fetcher,
     { refreshInterval: autoRefresh ? 5000 : 0 }
   )
-
-  // Fetch devices
-  const { data: devicesData, mutate: mutateDevices } = useSWR(
-    "/api/beacon/register",
+ 
+  // Fetch agents
+  const { data: agentsData, mutate: mutateAgents } = useSWR(
+    "/api/simulation/agents",
     fetcher,
     { refreshInterval: autoRefresh ? 5000 : 0 }
   )
-
+ 
   // Build logs URL with filters
-  const logsUrl = `/api/beacon/log?limit=50${
-    selectedDevice !== "all" ? `&device_id=${selectedDevice}` : ""
+  const logsUrl = `/api/simulation/logs?limit=50${
+    selectedAgent !== "all" ? `&agent_id=${selectedAgent}` : ""
   }${selectedEventType !== "all" ? `&event_type=${selectedEventType}` : ""}`
-
+ 
   // Fetch logs
   const { data: logsData, mutate: mutateLogs } = useSWR(logsUrl, fetcher, {
     refreshInterval: autoRefresh ? 5000 : 0,
   })
-
+ 
   const handleRefresh = useCallback(() => {
     mutateStats()
-    mutateDevices()
+    mutateAgents()
     mutateLogs()
-  }, [mutateStats, mutateDevices, mutateLogs])
-
+  }, [mutateStats, mutateAgents, mutateLogs])
+ 
   // Handle filter changes
   useEffect(() => {
     mutateLogs()
-  }, [selectedDevice, selectedEventType, mutateLogs])
-
+  }, [selectedAgent, selectedEventType, mutateLogs])
+ 
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -60,10 +60,10 @@ export default function DashboardPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-foreground">
-                Beacon Monitor
+                PlagueMonitor Dashboard
               </h1>
               <p className="text-xs font-medium text-muted-foreground/70">
-                Security beacon logging and monitoring
+                Epidemic simulation logging and monitoring
               </p>
             </div>
           </div>
@@ -87,7 +87,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </header>
-
+ 
       {/* Main content */}
       <main className="mx-auto max-w-7xl px-6 py-8">
         <div className="flex flex-col gap-8">
@@ -95,26 +95,26 @@ export default function DashboardPage() {
           <div className="rounded-2xl border border-white/5 glass p-1">
              <StatsCards stats={statsData} />
           </div>
-
+ 
           {/* Tables Section */}
           <div className="grid gap-8">
             <div className="rounded-2xl border border-white/5 glass p-6 shadow-xl">
-              <DevicesTable devices={devicesData?.devices || []} />
+              <DevicesTable agents={agentsData?.agents || []} />
             </div>
-
+ 
             <div className="rounded-2xl border border-white/5 glass p-6 shadow-xl">
               <LogsTable
                 logs={logsData?.logs || []}
                 total={logsData?.total || 0}
-                selectedDevice={selectedDevice}
+                selectedAgent={selectedAgent}
                 selectedEventType={selectedEventType}
-                onDeviceChange={setSelectedDevice}
+                onAgentChange={setSelectedAgent}
                 onEventTypeChange={setSelectedEventType}
-                devices={
-                  devicesData?.devices?.map(
-                    (d: { device_id: string; name: string | null }) => ({
-                      device_id: d.device_id,
-                      name: d.name,
+                agents={
+                  agentsData?.agents?.map(
+                    (a: { agent_id: string; name: string | null }) => ({
+                      agent_id: a.agent_id,
+                      name: a.name,
                     })
                   ) || []
                 }

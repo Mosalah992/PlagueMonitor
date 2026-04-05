@@ -1,48 +1,47 @@
 "use client"
 
-import { Radio, Activity, AlertTriangle, Clock } from "lucide-react"
-
 interface StatsCardsProps {
   stats: {
-    totalDevices: number
-    activeDevices: number
-    totalLogs: number
-    recentLogs: number
-    alertCount: number
+    totalAgents: number
+    infectedAgents: number
+    exposedAgents: number
+    recoveredAgents: number
+    healthyAgents: number
+    totalEvents: number
   } | null
 }
 
 export function StatsCards({ stats }: StatsCardsProps) {
   const cards = [
     {
-      label: "Total Devices",
-      value: stats?.totalDevices ?? 0,
-      icon: Radio,
+      label: "Total Population",
+      value: stats?.totalAgents ?? 0,
+      icon: Users,
       color: "text-info",
     },
     {
-      label: "Active (5min)",
-      value: stats?.activeDevices ?? 0,
+      label: "Infected",
+      value: stats?.infectedAgents ?? 0,
+      icon: AlertTriangle,
+      color: "text-destructive",
+    },
+    {
+      label: "Exposed",
+      value: stats?.exposedAgents ?? 0,
       icon: Activity,
+      color: "text-amber-500",
+    },
+    {
+      label: "Recovered",
+      value: stats?.recoveredAgents ?? 0,
+      icon: CheckCircle,
       color: "text-success",
     },
     {
-      label: "Total Logs",
-      value: stats?.totalLogs ?? 0,
-      icon: Clock,
-      color: "text-muted-foreground",
-    },
-    {
-      label: "Logs (1hr)",
-      value: stats?.recentLogs ?? 0,
-      icon: Clock,
+      label: "Healthy",
+      value: stats?.healthyAgents ?? 0,
+      icon: Shield,
       color: "text-chart-3",
-    },
-    {
-      label: "Alerts",
-      value: stats?.alertCount ?? 0,
-      icon: AlertTriangle,
-      color: "text-destructive",
     },
   ]
 

@@ -4,41 +4,41 @@ import { useState } from "react"
 import { formatDistanceToNow, format } from "date-fns"
 import { FileText, ChevronDown, ChevronUp } from "lucide-react"
 
-interface Log {
-  id: string
-  device_id: string
-  event_type: string
-  rssi: number | null
-  payload: Record<string, unknown>
-  message: string | null
-  source_ip: string | null
-  created_at: string
+interface InfectionEvent {
+  event_id: string
+  run_id: string
+  source_agent: string | null
+  target_agent: string
+  vector: string
+  outcome: string
+  severity: string
+  confidence: number
+  notes: string | null
+  timestamp: string
 }
 
 interface LogsTableProps {
-  logs: Log[]
+  logs: InfectionEvent[]
   total: number
-  selectedDevice: string
+  selectedAgent: string
   selectedEventType: string
-  onDeviceChange: (value: string) => void
+  onAgentChange: (value: string) => void
   onEventTypeChange: (value: string) => void
-  devices: { device_id: string; name: string | null }[]
+  agents: { agent_id: string; name: string | null }[]
 }
 
-const eventTypes = ["all", "heartbeat", "alert", "trigger", "error", "info"]
+const eventTypes = ["all", "success", "failed", "blocked", "intercepted"]
 
-function getEventTypeColor(type: string) {
+function getOutcomeColor(type: string) {
   switch (type) {
-    case "alert":
-      return "bg-destructive/20 text-destructive"
-    case "trigger":
-      return "bg-warning/20 text-warning"
-    case "error":
-      return "bg-destructive/20 text-destructive"
-    case "heartbeat":
+    case "success":
+      return "bg-destructive/20 text-destructive" // Infection success is destructive for the population
+    case "failed":
       return "bg-success/20 text-success"
-    case "info":
+    case "blocked":
       return "bg-info/20 text-info"
+    case "intercepted":
+      return "bg-warning/20 text-warning"
     default:
       return "bg-secondary text-secondary-foreground"
   }
@@ -47,11 +47,11 @@ function getEventTypeColor(type: string) {
 export function LogsTable({
   logs,
   total,
-  selectedDevice,
+  selectedAgent,
   selectedEventType,
-  onDeviceChange,
+  onAgentChange,
   onEventTypeChange,
-  devices,
+  agents,
 }: LogsTableProps) {
   const [expandedLog, setExpandedLog] = useState<string | null>(null)
 
@@ -62,21 +62,21 @@ export function LogsTable({
           <div className="rounded-lg bg-info/20 p-2">
             <FileText className="h-5 w-5 text-info" />
           </div>
-          <h2 className="text-xl font-bold tracking-tight text-foreground">Event Logs</h2>
+          <h2 className="text-xl font-bold tracking-tight text-foreground">Simulation Events</h2>
           <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-bold text-muted-foreground">
-            {total.toLocaleString()} Total
+            {total.toLocaleString()} Events
           </span>
         </div>
         <div className="flex flex-wrap gap-3 md:ml-auto">
           <select
-            value={selectedDevice}
-            onChange={(e) => onDeviceChange(e.target.value)}
+            value={selectedAgent}
+            onChange={(e) => onAgentChange(e.target.value)}
             className="rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-info/50 appearance-none cursor-pointer"
           >
-            <option value="all">All Devices</option>
-            {devices.map((device) => (
-              <option key={device.device_id} value={device.device_id}>
-                {device.name || device.device_id}
+            <option value="all">All Agents</option>
+            {agents.map((agent) => (
+              <option key={agent.agent_id} value={agent.agent_id}>
+                {agent.name || agent.agent_id}
               </option>
             ))}
           </select>
@@ -87,7 +87,7 @@ export function LogsTable({
           >
             {eventTypes.map((type) => (
               <option key={type} value={type}>
-                {type === "all" ? "All Events" : type.toUpperCase()}
+                {type === "all" ? "All Outcomes" : type.toUpperCase()}
               </option>
             ))}
           </select>
@@ -98,37 +98,38 @@ export function LogsTable({
           <thead>
             <tr className="border-b border-white/5 text-left text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
               <th className="px-6 py-4">Time</th>
-              <th className="px-6 py-4">Device</th>
-              <th className="px-6 py-4">Event</th>
-              <th className="px-6 py-4">RSSI</th>
-              <th className="px-6 py-4">Message</th>
-              <th className="px-6 py-4">Payload</th>
+              <th className="px-6 py-4">Source</th>
+              <th className="px-6 py-4">Target</th>
+              <th className="px-6 py-4">Vector</th>
+              <th className="px-6 py-4">Outcome</th>
+              <th className="px-6 py-4">Severity</th>
+              <th className="px-6 py-4">Details</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
             {logs.length === 0 ? (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={7}
                   className="px-6 py-12 text-center text-sm font-medium text-muted-foreground/50"
                 >
-                  No logs found
+                  No simulation events recorded
                 </td>
               </tr>
             ) : (
               logs.map((log) => (
                 <>
                   <tr
-                    key={log.id}
+                    key={log.event_id}
                     className="transition-colors hover:bg-white/5 group"
                   >
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
                         <span className="text-sm font-bold text-foreground">
-                          {format(new Date(log.created_at), "HH:mm:ss")}
+                          {format(new Date(log.timestamp), "HH:mm:ss")}
                         </span>
                         <span className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground/50">
-                          {formatDistanceToNow(new Date(log.created_at), {
+                          {formatDistanceToNow(new Date(log.timestamp), {
                             addSuffix: true,
                           })}
                         </span>
@@ -136,33 +137,41 @@ export function LogsTable({
                     </td>
                     <td className="px-6 py-4">
                       <code className="rounded bg-black/40 px-2 py-1 font-mono text-xs font-semibold text-foreground/80">
-                        {log.device_id}
+                        {log.source_agent || "Environment"}
                       </code>
                     </td>
                     <td className="px-6 py-4">
-                      <span
-                        className={`rounded-lg border px-2 py-1 text-[10px] font-black uppercase tracking-widest ${getEventTypeColor(log.event_type)}`}
-                      >
-                        {log.event_type}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-xs font-bold text-muted-foreground/80">
-                      {log.rssi !== null ? `${log.rssi} dBm` : "—"}
-                    </td>
-                    <td className="max-w-xs truncate px-6 py-4 text-sm font-medium text-muted-foreground">
-                      {log.message || "—"}
+                      <code className="rounded bg-black/40 px-2 py-1 font-mono text-xs font-semibold text-info/80">
+                        {log.target_agent}
+                      </code>
                     </td>
                     <td className="px-6 py-4">
-                      {Object.keys(log.payload).length > 0 ? (
+                      <span className="text-xs font-bold text-muted-foreground">
+                        {log.vector}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`rounded-lg border px-2 py-1 text-[10px] font-black uppercase tracking-widest ${getOutcomeColor(log.outcome)}`}
+                      >
+                        {log.outcome}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                       <span className={`text-xs font-black uppercase ${log.severity === 'high' ? 'text-destructive' : 'text-muted-foreground'}`}>
+                         {log.severity}
+                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
                         <button
                           onClick={() =>
                             setExpandedLog(
-                              expandedLog === log.id ? null : log.id
+                              expandedLog === log.event_id ? null : log.event_id
                             )
                           }
                           className="flex items-center gap-1 text-xs font-bold text-info transition-colors hover:text-info/80"
                         >
-                          {expandedLog === log.id ? (
+                          {expandedLog === log.event_id ? (
                             <>
                               Hide <ChevronUp className="h-4 w-4" />
                             </>
@@ -172,20 +181,28 @@ export function LogsTable({
                             </>
                           )}
                         </button>
-                      ) : (
-                        <span className="text-muted-foreground/30">—</span>
-                      )}
                     </td>
                   </tr>
-                  {expandedLog === log.id && (
-                    <tr key={`${log.id}-payload`}>
+                  {expandedLog === log.event_id && (
+                    <tr key={`${log.event_id}-payload`}>
                       <td
-                        colSpan={6}
+                        colSpan={7}
                         className="bg-black/40 px-6 py-6"
                       >
-                        <pre className="overflow-x-auto rounded-xl border border-white/5 bg-black/20 p-4 text-xs font-medium text-muted-foreground/90">
-                          {JSON.stringify(log.payload, null, 2)}
-                        </pre>
+                        <div className="rounded-xl border border-white/5 bg-black/20 p-4">
+                          <p className="mb-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">Event Notes</p>
+                          <p className="text-sm text-foreground/90 italic">"{log.notes || 'No telemetry notes available for this encounter.'}"</p>
+                          <div className="mt-4 grid grid-cols-2 gap-4">
+                             <div>
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase">Confidence</p>
+                                <p className="text-sm font-mono text-info">{(log.confidence * 100).toFixed(1)}%</p>
+                             </div>
+                             <div>
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase">Run ID</p>
+                                <p className="text-sm font-mono text-muted-foreground/60">{log.run_id}</p>
+                             </div>
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   )}
