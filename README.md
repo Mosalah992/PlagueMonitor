@@ -2,13 +2,13 @@
 
 ## Architecture
 
-This is a clean, modular platform separating three key components:
-1. **Frontend**: A Next.js 14 Dashboard (Deployed to Vercel).
-2. **Backend**: A local FastAPI orchestrator managing the database, runs, and WebSocket fanout.
-3. **Runtime**: An isolated Python Subprocess that executes real epidemic simulation logic. 
+This is a clean, modular monorepo platform separating three key components:
+1. **Frontend** (`/frontend`): A Next.js 16 Dashboard (Deployed to Vercel).
+2. **Backend** (`/backend`): A local FastAPI orchestrator managing the database, runs, and WebSocket fanout (Port 8001).
+3. **Runtime** (`/runtime`): An isolated Python Subprocess that executes real epidemic simulation logic. 
 
 **Data Flow**:
-- Frontend talks *only* to Backend via REST + WebSockets.
+- Frontend talks *only* to Backend via REST + WebSockets (Proxied via `next.config.mjs`).
 - Backend orchestrates the Runtime.
 - Runtime ticks independently and sends HTTP Webhooks back to internal Backend API routes.
 - Backend persists them to SQLite and broadcasts them over WebSockets to Frontend.
@@ -33,12 +33,28 @@ pip install fastapi uvicorn sqlite3 pydantic sqlalchemy websockets httpx sse-sta
 
 Run the backend server:
 ```bash
-python -m uvicorn backend.app.main:app --reload
+python -m uvicorn backend.app.main:app --port 8001 --reload
 ```
-The FastAPI instance will start at `http://localhost:8000`. You can test endpoints at `http://localhost:8000/docs`.
+The FastAPI instance will start at `http://localhost:8001`. You can test endpoints at `http://localhost:8001/docs`.
 
-### 2. Frontend (Vercel)
-The frontend is built independently and automatically deployed to Vercel via its repository linkage. It points to your local machine (`http://localhost:8000`) for data via standard config or `env` vars.
+### 2. Frontend (Next.js)
+
+The frontend is located in the `frontend/` directory.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### 3. Vercel Deployment (Monorepo Config)
+
+When deploying to Vercel, you **MUST** configure the following in the Vercel Project Settings:
+1. **Root Directory**: Set to `frontend`.
+2. **Framework Preset**: Next.js (detected automatically).
+3. **Environment Variables**: Ensure `NEXT_PUBLIC_API_URL` points to your backend (or use the internal proxy).
+
+A root `vercel.json` is provided to assist with this configuration.
 
 ## Migrating old logic (Future Wave)
 The core Runtime folder (`runtime/engine`) and `runtime.models` are kept physically decoupled from complex UI states.
