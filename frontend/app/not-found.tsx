@@ -25,7 +25,7 @@ export default function NotFound() {
           Return Home
         </Link>
       </div>
-      <div className="mt-8 text-xs text-muted-foreground/40 font-mono">
+      <div className="mt-8 text-xs text-muted-foreground/40 font-mono italic">
         Status: Next.js App Router Active
       </div>
     </div>
