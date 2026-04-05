@@ -49,12 +49,10 @@ npm run dev
 
 ### 3. Vercel Deployment (Monorepo Config)
 
-When deploying to Vercel, you **MUST** configure the following in the Vercel Project Settings:
-1. **Root Directory**: Set to `frontend`.
+When deploying to Vercel, you **MUST** configure the following manually in the Vercel Project Settings:
+1. **Root Directory**: Navigate to **Settings > Build and Deployment** and set this to `frontend`. This is a dashboard-only setting and cannot be set via `vercel.json`.
 2. **Framework Preset**: Next.js (detected automatically).
 3. **Environment Variables**: Ensure `NEXT_PUBLIC_API_URL` points to your backend (or use the internal proxy).
-
-A root `vercel.json` is provided to assist with this configuration.
 
 ## Migrating old logic (Future Wave)
 The core Runtime folder (`runtime/engine`) and `runtime.models` are kept physically decoupled from complex UI states.
