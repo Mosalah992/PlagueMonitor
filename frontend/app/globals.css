@@ -120,6 +120,13 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground mesh-gradient min-h-screen;
+    @apply bg-background text-foreground min-h-screen;
+    background-color: oklch(0.09 0 0);
+    background-image: 
+      radial-gradient(at 0% 0%, oklch(0.45 0.2 280 / 0.15) 0px, transparent 50%),
+      radial-gradient(at 50% 0%, oklch(0.65 0.18 250 / 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, oklch(0.45 0.2 280 / 0.15) 0px, transparent 50%),
+      radial-gradient(at 50% 50%, oklch(0.7 0.15 165 / 0.05) 0px, transparent 50%);
+    background-attachment: fixed;
   }
 }
