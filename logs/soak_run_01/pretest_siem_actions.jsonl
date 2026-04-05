@@ -1,3 +1,0 @@
-{"ts": "2026-04-02T12:35:00.943422+00:00", "endpoint": "/api/patterns", "query": "event!=HEARTBEAT", "time_range": "all", "result_count": 5, "elapsed_ms": 2781.7}
-{"ts": "2026-04-02T12:35:02.090565+00:00", "endpoint": "/api/search", "query": "event=DEFENSE_RESULT_EVALUATED", "time_range": "all", "result_count": 173, "elapsed_ms": 338.85}
-{"ts": "2026-04-02T12:35:02.883092+00:00", "endpoint": "/api/search", "query": "event=ATTACK_RESULT_EVALUATED", "time_range": "all", "result_count": 173, "elapsed_ms": 286.61}
