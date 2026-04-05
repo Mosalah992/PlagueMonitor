@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 
 class BackendAPIClient:
-    def __init__(self, base_url: str = "http://localhost:8000/api/internal"):
+    def __init__(self, base_url: str = "http://localhost:8001/api/internal"):
         self.base_url = base_url
         self.client = httpx.Client(timeout=5.0)
 
