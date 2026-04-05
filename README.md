@@ -3,7 +3,7 @@
 ## Architecture
 
 This is a clean, modular monorepo platform separating three key components:
-1. **Frontend** (`/frontend`): A Next.js 16 Dashboard (Deployed to Vercel).
+1. **Frontend** (`/frontend`): A Next.js 15+ Dashboard (Deployed to Vercel).
 2. **Backend** (`/backend`): A local FastAPI orchestrator managing the database, runs, and WebSocket fanout (Port 8001).
 3. **Runtime** (`/runtime`): An isolated Python Subprocess that executes real epidemic simulation logic. 
 
