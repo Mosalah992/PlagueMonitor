@@ -1,5 +1,7 @@
 "use client"
 
+import { Users, Activity, AlertTriangle, CheckCircle, Shield } from "lucide-react"
+
 interface StatsCardsProps {
   stats: {
     totalAgents: number

@@ -1,7 +1,7 @@
 "use client"
 
 import { formatDistanceToNow } from "date-fns"
-import { Circle, Radio } from "lucide-react"
+import { Users } from "lucide-react"
 
 interface Agent {
   id: string
